@@ -1,6 +1,6 @@
 using UnityEngine;
 
-public enum ImpactType { Normal = 0 , Obstacle, }
+public enum ImpactType { Normal = 0 , Obstacle,Enemy, }
 
 public class ImpactMemoryPool : MonoBehaviour
 {
@@ -26,6 +26,10 @@ public class ImpactMemoryPool : MonoBehaviour
             OnSpawnImpact(ImpactType.Normal,hit.point, Quaternion.LookRotation(hit.normal));
         }
         else if ( hit.transform.CompareTag("ImpactObstacle"))
+        {
+            OnSpawnImpact(ImpactType.Obstacle, hit.point, Quaternion.LookRotation(hit.normal));
+        }
+        else if (hit.transform.CompareTag("ImpactEnemy"))
         {
             OnSpawnImpact(ImpactType.Obstacle, hit.point, Quaternion.LookRotation(hit.normal));
         }

@@ -2,7 +2,7 @@
   "dependencies": {
     "com.unity.2d.sprite": "1.0.0",
     "com.unity.2d.tilemap": "1.0.0",
-    "com.unity.ai.navigation": "2.0.8",
+    "com.unity.ai.navigation": "2.0.9",
     "com.unity.analytics": "3.8.1",
     "com.unity.burst": "1.8.24",
     "com.unity.collab-proxy": "2.9.2",
