@@ -3,18 +3,9 @@ using UnityEditor;
 using UnityEngine;
 using UnityEngine.UI;
 
-[System.Serializable]
-public class AmmoEvent : UnityEngine.Events.UnityEvent<int, int> { }
-[System.Serializable]
-public class MagazineEvent : UnityEngine.Events.UnityEvent<int> { }
 
-public class WeaponAssaultRifle : MonoBehaviour
+public class WeaponAssaultRifle : WeaponBase
 {
-    [HideInInspector]
-    public AmmoEvent onAmmoEvent = new AmmoEvent();
-    [HideInInspector]
-    public MagazineEvent onMagazineEvent = new MagazineEvent();
-
     [Header("Fire Effects")]
     [SerializeField]
     private GameObject muzzleFlashEffect;  // 총구 이펙트 (On/Off)
@@ -33,36 +24,24 @@ public class WeaponAssaultRifle : MonoBehaviour
     [SerializeField]
     private AudioClip audioClipReload;  // 재장전 사운드
 
-    [Header("Weapon Setting")]
-    [SerializeField]
-    private WeaponSetting weaponSetting;  // 무기 설정
-
     [Header("Aim UI")]
     [SerializeField]
     private Image imageAim;
 
-    private float lasetAttackTime = 0;  // 마지막 발사시간 체크용
-    private bool isReload = false;  // 재장전 중인지 체크
-    private bool isAttack = false;  // 공격 여부 체크용
     private bool isModeChange = false;  // 모드 전환 여부 체크용
     private float defaultModeFOV = 60;  // 기본모드에서의 카메라 FOV
     private float aimModeFov = 30;  // AIM모드에서의 카메라 FOV
+    private float currentSpread;  // 탄퍼짐 체크
 
-    private AudioSource audioSource;  // 사운드 재생 컴포넌트
-    private PlayerAnimatorController animator;  // 에니메이션 재생 제어
     private CasingMemoryPool casingMemoryPool;  // 탄피 생성 후 활성/비활성 관리
     private ImpactMemoryPool impactMemoryPool;  // 공격 효과 생성 후 활성/비활성 관리
     private Camera mainCamera;  // 광선 발사
 
-    // 외부에서 필요한 정보를 열람하기 위해 정의한 Get Property's
-    public WeaponName WeaponName => weaponSetting.weaponName;
-    public int CurrentMagazine => weaponSetting.currentMagazine;
-    public int Maxmagazine => weaponSetting.maxMagazine;
-
     private void Awake()
     {
-        audioSource = GetComponent<AudioSource>();
-        animator = GetComponentInParent<PlayerAnimatorController>();
+        // 기반 클래스의 초기화를 위한 Setup() 메소드 호출
+        base.Setup();
+
         casingMemoryPool = GetComponent<CasingMemoryPool>();
         impactMemoryPool = GetComponent<ImpactMemoryPool>();
         mainCamera = Camera.main;
@@ -71,6 +50,8 @@ public class WeaponAssaultRifle : MonoBehaviour
         weaponSetting.currentMagazine = weaponSetting.maxMagazine;
         // 처음 탄 수는 최대로 설정
         weaponSetting.currentAmmo = weaponSetting.maxAmmo;
+
+        currentSpread = weaponSetting.minSpread;
     }
 
     private void OnEnable()
@@ -88,7 +69,15 @@ public class WeaponAssaultRifle : MonoBehaviour
         ResetVariables();
     }
 
-    public void StartWeaponAction(int type =0)
+    private void Update()
+    {
+        if ( !isAttack)
+        {
+            currentSpread = Mathf.Lerp(currentSpread, weaponSetting.minSpread,Time.deltaTime * weaponSetting.spreadRecoverySpeed);
+        }
+    }
+
+    public override void StartWeaponAction(int type =0)
     {
         // 재장전 중일 때는 무기 액션을 할 수 없다
         if (isReload == true) return;
@@ -121,7 +110,7 @@ public class WeaponAssaultRifle : MonoBehaviour
         }
     }
 
-    public void StopWeaponAction(int type=0)
+    public override void StopWeaponAction(int type=0)
     {
         // 마우스 왼쪽 클릭 (공격 종료)
         if ( type == 0)
@@ -131,7 +120,7 @@ public class WeaponAssaultRifle : MonoBehaviour
         }
     }
 
-    public void StartReload()
+    public override void StartReload()
     {
         // 현재 재장전 중이면 재장전 불가능
         if (isReload == true || weaponSetting.currentMagazine <= 0) return;
@@ -170,13 +159,15 @@ public class WeaponAssaultRifle : MonoBehaviour
             {
                 return;
             }
+
             // 공격시 currentAmmo 1 감소, 탄 수 UI 업데이트
             weaponSetting.currentAmmo--;
             onAmmoEvent.Invoke(weaponSetting.currentAmmo, weaponSetting.maxAmmo);
+
             // 무기 에니메이션 재생 (모드에 따라 AimFire or Fire 애니메이션 재생)
-            //animator.Play("Fire", -1, 0);
             string animation = animator.AimModeIs == true ? "AimFire" : "Fire";
             animator.Play(animation, -1, 0);
+
             // 총구 이펙트 재생 (default mode 일 떄만 재생)
             if(animator.AimModeIs == false) StartCoroutine("OnMuzzleFlashEffect");
             // 공격 사운드 재생
@@ -186,6 +177,9 @@ public class WeaponAssaultRifle : MonoBehaviour
 
             // 광선을 발사해 원하는 위치 공격 (+Impact Effect)
             TwoStepRaycast();
+
+            currentSpread += weaponSetting.spreadIncreasePerShot;
+            currentSpread = Mathf.Clamp(currentSpread, weaponSetting.minSpread, weaponSetting.maxSpread);
         }
     }
 
@@ -262,16 +256,18 @@ public class WeaponAssaultRifle : MonoBehaviour
         isReload = false;
         isAttack = false;
         isModeChange = false;
+        currentSpread = weaponSetting.minSpread;
     }
 
     private void TwoStepRaycast()
     {
-        Ray ray;
         RaycastHit hit;
-        Vector3 targetPoint = Vector3.zero;
+        Vector3 targetPoint;
 
-        // 화면의 중앙 좌표 (Aim 기준으로 Raycast 연산)
-        ray = mainCamera.ViewportPointToRay(Vector2.one * 0.5f);
+        // 화면의 중앙 좌표 (Aim 기준으로 Raycast 연산 + 탄퍼짐)
+        Vector3 spreadDirection = GetSpreadDirection();
+        Ray ray = new Ray(mainCamera.transform.position,spreadDirection);
+
         // 공격 사거리(attackDistance) 안에 부딪히는 오브젝트가 있으면 targetPoint는 광선에 부딪힌 위치
         if ( Physics.Raycast(ray, out hit, weaponSetting.attackDistance))
         {
@@ -295,15 +291,39 @@ public class WeaponAssaultRifle : MonoBehaviour
             {
                 hit.transform.GetComponent<EnemyFSM>().TakeDamage(weaponSetting.damage);
             }
+            else if (hit.transform.CompareTag("InteractionObject"))
+            {
+                hit.transform.GetComponent<InteractionObject>().TakeDamage(weaponSetting.damage);
+            }
         }
         Debug.DrawRay(bulletSpawnPoint.position,attackDirection*weaponSetting.attackDistance, Color.blue);
     }
 
-    private void PlaySound(AudioClip clip)
+    private Vector3 GetSpreadDirection()
     {
-        audioSource.Stop();
-        audioSource.clip = clip;
-        audioSource.Play();
+        float spread = currentSpread;
+
+        // 조준 상태면 퍼짐 감소
+        if (animator.AimModeIs)
+        {
+            spread *= weaponSetting.aimSpreadMultiplier;
+        }
+
+        Vector2 random = Random.insideUnitCircle * spread;
+
+        Vector3 direction =
+            mainCamera.transform.forward +
+            mainCamera.transform.right * random.x +
+            mainCamera.transform.up * random.y;
+
+        return direction.normalized;
+    }
+
+    public void IncreaseMagazine(int magazine)
+    {
+        weaponSetting.currentMagazine = CurrentMagazine + magazine > MaxMagazine ? MaxMagazine : CurrentMagazine + magazine;
+
+        onMagazineEvent.Invoke(CurrentMagazine);
     }
 
 }
