@@ -24,9 +24,9 @@ public class WeaponAssaultRifle : WeaponBase
     [SerializeField]
     private AudioClip audioClipReload;  // 재장전 사운드
 
-    [Header("Aim UI")]
+    [Header("CrossHair")]
     [SerializeField]
-    private Image imageAim;
+    private CrosshairUi crosshaairUI;  // 크로스 헤어 Ui
 
     private bool isModeChange = false;  // 모드 전환 여부 체크용
     private float defaultModeFOV = 60;  // 기본모드에서의 카메라 FOV
@@ -74,6 +74,8 @@ public class WeaponAssaultRifle : WeaponBase
         if ( !isAttack)
         {
             currentSpread = Mathf.Lerp(currentSpread, weaponSetting.minSpread,Time.deltaTime * weaponSetting.spreadRecoverySpeed);
+
+            crosshaairUI.SetSpread(currentSpread);
         }
     }
 
@@ -118,6 +120,23 @@ public class WeaponAssaultRifle : WeaponBase
             isAttack = false;
             StopCoroutine("OnAttackLoop");
         }
+    }
+
+    public override void ThrowWeapon()
+    {
+        Debug.Log("Throw");
+
+        // 공격 / 모드 전환 중이면 무시
+        if (isAttack || isModeChange) return;
+
+        // 현재 무기 비활성화
+        weaponSwitchSystem.ClearCurrentWeapon(this);
+
+        // WeaponSwitchSystem 에 알림
+        weaponSwitchSystem.RemoveWeapon(this);
+
+        // 무기 오브젝트 제거
+        Destroy(gameObject);
     }
 
     public override void StartReload()
@@ -180,6 +199,8 @@ public class WeaponAssaultRifle : WeaponBase
 
             currentSpread += weaponSetting.spreadIncreasePerShot;
             currentSpread = Mathf.Clamp(currentSpread, weaponSetting.minSpread, weaponSetting.maxSpread);
+            // CroosHair Ui에 정보 전달
+            crosshaairUI.SetSpread(currentSpread);
         }
     }
 
@@ -230,7 +251,7 @@ public class WeaponAssaultRifle : WeaponBase
         float time = 0.35f;
 
         animator.AimModeIs = !animator.AimModeIs;
-        imageAim.enabled = !imageAim.enabled;
+        crosshaairUI.SetActive(!animator.AimModeIs);
 
         float start = mainCamera.fieldOfView;
         float end = animator.AimModeIs == true ? aimModeFov : defaultModeFOV;

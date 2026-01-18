@@ -66,7 +66,16 @@ public class PlayerHUD : MonoBehaviour
     public void SwitchingWeapon(WeaponBase newWeapon)
     {
         weapon = newWeapon;
+        
+        if ( weapon == null)
+        {
+            textWeaponName.text = "";
+            imageWeaponIcon.enabled = false;
+            textAmmo.text = "";
+            return;
+        }
 
+        imageWeaponIcon.enabled = true;
         SetupWeapon();
     }
 

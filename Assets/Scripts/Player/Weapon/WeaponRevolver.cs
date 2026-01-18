@@ -64,6 +64,22 @@ public class WeaponRevolver : WeaponBase
         isAttack = false;
     }
 
+    public override void ThrowWeapon()
+    {
+        // 공격 / 모드 전환 중이면 무시
+        if (!isAttack) return;
+
+        // 현재 무기 비활성화
+        gameObject.SetActive(false);
+
+        // WeaponSwitchSystem 에 알림
+        Object.FindAnyObjectByType<WeaponSwitchSystem>().RemoveWeapon(this);
+
+        // 무기 오브젝트 제거
+        Destroy(gameObject);
+    }
+
+
     public override void StartReload()
     {
         // 현재 재장전 중이면 재장전 불가능

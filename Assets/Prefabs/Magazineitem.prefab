@@ -120,3 +120,4 @@ MonoBehaviour:
   magazineEffectPrefab: {fileID: 7806298706207838227, guid: ec7be59041b3faf41a21530378a66b50, type: 3}
   increaseMagazine: 2
   rotateSpeed: 50
+  assaultRiflePrefab: {fileID: 4094572878133102255, guid: d887686409493e745974f85760e9a16d, type: 3}

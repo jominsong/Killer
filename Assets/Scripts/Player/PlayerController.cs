@@ -9,7 +9,7 @@ public class PlayerController : MonoBehaviour
     [SerializeField]
     private KeyCode keyCodJump = KeyCode.Space;  // 점프 키
     [SerializeField]
-    private KeyCode keyCodeReload = KeyCode.R;  // 탄 재장전 키
+    private KeyCode keyCodeThrow = KeyCode.R;  // 무기 던지기 키
 
     [Header("Audio Clips")]
     [SerializeField]
@@ -59,13 +59,19 @@ public class PlayerController : MonoBehaviour
         // 이동중 일 때 (걷기 or 뛰기)
         if (x != 0 || z != 0)
         {
+            
+
             bool isRun = false;
 
             // 옆이나 뒤로 이동할 때는 달릴 수 없다
             if( z > 0 ) isRun = Input.GetKey(keyCodeRun);
 
             movement.MoveSpeed = isRun == true ? status.RunSpeed : status.WalkSpeed;
-            weapon.Animator.MoveSpeed = isRun == true ? 1 : 0.5f;
+            if ( weapon != null )
+            {
+                if (weapon == null) return;
+                weapon.Animator.MoveSpeed = isRun == true ? 1 : 0.5f;
+            }
             audioSource.clip = isRun == true ? audioClipRun : audioClipWalk;
 
             // 방향키 입력 여부는 매 프레임 확인하기 때문에
@@ -76,18 +82,22 @@ public class PlayerController : MonoBehaviour
                 audioSource.Play();
             }
         }
+
         // 제자리에 멈춰있을 때
         else
         {
             movement.MoveSpeed = 0;
-            weapon.Animator.MoveSpeed = 0;
-
+            if (weapon != null)
+            {
+                weapon.Animator.MoveSpeed = 0;
+            }
             // 멈췄을 때 사운드가 재생중이면 정지
             if (audioSource.isPlaying == true)
             {
                 audioSource.Stop();
             }
         }
+
         movement.MoveTo(new Vector3(x, 0, z));
     }
 
@@ -101,6 +111,8 @@ public class PlayerController : MonoBehaviour
 
     private void UpdateWeaponAction()
     {
+        if (weapon == null) return;
+
         if( Input.GetMouseButtonDown(0))
         {
             weapon.StartWeaponAction();
@@ -119,9 +131,9 @@ public class PlayerController : MonoBehaviour
             weapon.StopWeaponAction(1);
         }
 
-        if ( Input.GetKeyDown(keyCodeReload))
+        if ( Input.GetKeyDown(keyCodeThrow))
         {
-            weapon.StartReload();
+            weapon.ThrowWeapon();
         }
     }
 

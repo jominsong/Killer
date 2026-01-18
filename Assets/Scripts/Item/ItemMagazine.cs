@@ -9,6 +9,8 @@ public class ItemMagazine : ItemBase
     private int increaseMagazine = 2;
     [SerializeField]
     private float rotateSpeed = 50;
+    [SerializeField]
+    private WeaponAssaultRifle assaultRiflePrefab;
 
     private IEnumerator Start()
     {
@@ -23,10 +25,27 @@ public class ItemMagazine : ItemBase
 
     public override void Use(GameObject entity)
     {
-        entity.GetComponentInChildren<WeaponAssaultRifle>().IncreaseMagazine(increaseMagazine);
+        WeaponSwitchSystem weaponSystem =
+       entity.GetComponentInChildren<WeaponSwitchSystem>();
+
+        // 이미 Assault Rifle이 있으면 → 기존 로직
+        WeaponAssaultRifle rifle =
+            entity.GetComponentInChildren<WeaponAssaultRifle>();
+
+        if (rifle != null)
+        {
+            rifle.IncreaseMagazine(increaseMagazine);
+        }
+        // Assault Rifle이 없으면 → 새로 생성
+        else
+        {
+            WeaponAssaultRifle newRifle =
+                Instantiate(assaultRiflePrefab);
+
+            weaponSystem.AddWeapon(newRifle, WeaponType.main);
+        }
 
         Instantiate(magazineEffectPrefab, transform.position, Quaternion.identity);
-
         Destroy(gameObject);
     }
 }

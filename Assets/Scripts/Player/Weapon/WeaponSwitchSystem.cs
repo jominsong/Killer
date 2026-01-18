@@ -1,4 +1,4 @@
-using UnityEngine;
+ using UnityEngine;
 
 public class WeaponSwitchSystem : MonoBehaviour
 {
@@ -83,5 +83,66 @@ public class WeaponSwitchSystem : MonoBehaviour
         // 현재 사용하는 무기 활성화
         currentWeapon.gameObject.SetActive(true);
 
+    }
+
+    public void ClearCurrentWeapon(WeaponBase weapon)
+    {
+        if (currentWeapon == weapon)
+        {
+            currentWeapon = null;
+            previousWeapon = null;
+
+            playerController.SwitchingWeapon(null);
+            playerHUD.SwitchingWeapon(null);
+        }
+    }
+
+    public void RemoveWeapon(WeaponBase weapon)
+    {
+        for (int i = 0; i < weapons.Length; ++ i)
+        {
+            if ( weapons[i] == weapon )
+            {
+                weapons[i] = null;
+                break;
+            }
+        }
+
+        // 현재 무기를 버렸다면 다른 무기 자동 장착
+        if (currentWeapon == weapon)
+        {
+            currentWeapon = null;
+            previousWeapon = null;
+
+            // 남아있는 무기 중 하나 자동 선택
+            for (int i = 0;i < weapons.Length; ++ i)
+            {
+                if ( weapons[i] == null )
+                {
+                    SwitchingWeapon((WeaponType)i);
+                    return;
+                }
+            }
+        }
+
+        // 무기가 하나도 없을때
+        playerController.SwitchingWeapon(null);
+        playerHUD.SwitchingWeapon(null);
+    }
+
+    public void AddWeapon(WeaponBase newweapon,WeaponType slot)
+    {
+        // 삭제 예정
+        if (weapons[(int)slot] != null) return;
+
+        weapons[(int)slot] = newweapon;
+
+        // 플레이어 무기 하위로 정렬
+        newweapon.transform.SetParent(transform);
+        newweapon.transform.localPosition = Vector3.zero;
+        newweapon.transform.localRotation = Quaternion.identity;
+
+        // 바로 장착
+        SwitchingWeapon(slot);
     }
 }

@@ -15,6 +15,8 @@ public abstract class WeaponBase : MonoBehaviour
     protected WeaponType weaponType;  // 무기 종류
     [SerializeField]
     protected WeaponSetting weaponSetting;  // 무기 설정
+    [SerializeField]
+    protected WeaponSwitchSystem weaponSwitchSystem;  // 무기 전환 시스템
 
     protected float lasetAttackTime = 0f;  // 마지막 발사시간 체크용
     protected bool isReload = false;  // 재장전 중인지 체크
@@ -37,6 +39,7 @@ public abstract class WeaponBase : MonoBehaviour
     public abstract void StartWeaponAction(int type = 0);
     public abstract void StopWeaponAction(int type = 0);
     public abstract void StartReload();
+    public abstract void ThrowWeapon();
 
     protected void PlaySound(AudioClip clip)
     {
@@ -49,6 +52,7 @@ public abstract class WeaponBase : MonoBehaviour
     {
         audioSource = GetComponent<AudioSource>();
         animator = GetComponent<PlayerAnimatorController>();
+        weaponSwitchSystem = Object.FindFirstObjectByType<WeaponSwitchSystem>();
     }
 
 }
