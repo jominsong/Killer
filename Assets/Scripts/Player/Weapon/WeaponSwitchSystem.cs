@@ -6,6 +6,10 @@ public class WeaponSwitchSystem : MonoBehaviour
     private PlayerController playerController;
     [SerializeField]
     private PlayerHUD playerHUD;
+    [SerializeField]
+    private Transform mountMain;
+    [SerializeField]
+    private Transform mountSub;
 
     [SerializeField]
     private WeaponBase[] weapons;  // 소지중인 무기 4종류
@@ -50,6 +54,7 @@ public class WeaponSwitchSystem : MonoBehaviour
 
     private void SwitchingWeapon(WeaponType weaponType)
     {
+
         // 교체 가능한 무기가 없으면 종료
         if (weapons[(int)weaponType] == null)
         {
@@ -85,6 +90,19 @@ public class WeaponSwitchSystem : MonoBehaviour
 
     }
 
+    private Transform GetMountPoint(WeaponType type)
+    {
+        switch(type)
+        {
+            case WeaponType.main:
+                return mountMain;
+            case WeaponType.sub: 
+                return mountSub;
+        }
+
+        return null;
+    }
+
     public void ClearCurrentWeapon(WeaponBase weapon)
     {
         if (currentWeapon == weapon)
@@ -99,6 +117,8 @@ public class WeaponSwitchSystem : MonoBehaviour
 
     public void RemoveWeapon(WeaponBase weapon)
     {
+        weapon.OnUnequipped();
+
         for (int i = 0; i < weapons.Length; ++ i)
         {
             if ( weapons[i] == weapon )
@@ -107,6 +127,9 @@ public class WeaponSwitchSystem : MonoBehaviour
                 break;
             }
         }
+
+        // HUD에 등록 갱신
+        playerHUD.SetupAllWeapons(weapons);
 
         // 현재 무기를 버렸다면 다른 무기 자동 장착
         if (currentWeapon == weapon)
@@ -132,17 +155,23 @@ public class WeaponSwitchSystem : MonoBehaviour
 
     public void AddWeapon(WeaponBase newweapon,WeaponType slot)
     {
-        // 삭제 예정
         if (weapons[(int)slot] != null) return;
 
         weapons[(int)slot] = newweapon;
 
-        // 플레이어 무기 하위로 정렬
-        newweapon.transform.SetParent(transform);
+        Transform mount = GetMountPoint(slot);
+
+        // 플레이어 무기 하위로 정렬, 활성화 처리
+        newweapon.transform.SetParent(mount);
         newweapon.transform.localPosition = Vector3.zero;
         newweapon.transform.localRotation = Quaternion.identity;
+        newweapon.OnEquipped();
+
+        // HUD에 등록 갱신
+        playerHUD.SetupAllWeapons(weapons);
 
         // 바로 장착
         SwitchingWeapon(slot);
     }
+
 }

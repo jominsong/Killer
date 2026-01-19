@@ -15,23 +15,25 @@ public class WeaponAssaultRifle : WeaponBase
     private Transform casingSpawnPoint;  // 탄피 생성 위치
     [SerializeField]
     private Transform bulletSpawnPoint;  // 총알 생성 위치
+    [SerializeField]
+    private Transform throwPoint;  // 던질 위치
 
     [Header("Audio Clips")]
     [SerializeField]
     private AudioClip audioClipTakeOutWeapon;  // 무기 장착 사운드
     [SerializeField]
     private AudioClip audioClipFire;  // 공격 사운드
-    [SerializeField]
-    private AudioClip audioClipReload;  // 재장전 사운드
 
-    [Header("CrossHair")]
+    [Header("ThrowWeapon")]
     [SerializeField]
-    private CrosshairUi crosshaairUI;  // 크로스 헤어 Ui
+    private GameObject throwWeaponPrepfab;  // 던질 무기 프리팹
+    private float throwForce = 15;
+    private float spinForce = 500;
 
     private bool isModeChange = false;  // 모드 전환 여부 체크용
     private float defaultModeFOV = 60;  // 기본모드에서의 카메라 FOV
     private float aimModeFov = 30;  // AIM모드에서의 카메라 FOV
-    private float currentSpread;  // 탄퍼짐 체크
+    private float currentSpread;  // 탄퍼짐 체크용
 
     private CasingMemoryPool casingMemoryPool;  // 탄피 생성 후 활성/비활성 관리
     private ImpactMemoryPool impactMemoryPool;  // 공격 효과 생성 후 활성/비활성 관리
@@ -50,7 +52,7 @@ public class WeaponAssaultRifle : WeaponBase
         weaponSetting.currentMagazine = weaponSetting.maxMagazine;
         // 처음 탄 수는 최대로 설정
         weaponSetting.currentAmmo = weaponSetting.maxAmmo;
-
+        // 탄퍼짐 설정
         currentSpread = weaponSetting.minSpread;
     }
 
@@ -60,7 +62,8 @@ public class WeaponAssaultRifle : WeaponBase
         PlaySound(audioClipTakeOutWeapon);
         // 총구 이펙트 오브젝트 비활성화
         muzzleFlashEffect.SetActive(false);
-
+        // 무기 활성화
+        OnEquipped();
         // 무기가 활성화될 때 해당 무기의 탄창 정보를 갱신한다
         onMagazineEvent.Invoke(weaponSetting.currentMagazine);
         // 무기가 활성화될 때 해당 무기의 탄 수 정보를 갱신한다
@@ -71,18 +74,21 @@ public class WeaponAssaultRifle : WeaponBase
 
     private void Update()
     {
+        if (!isEquipped) return;
+
         if ( !isAttack)
         {
             currentSpread = Mathf.Lerp(currentSpread, weaponSetting.minSpread,Time.deltaTime * weaponSetting.spreadRecoverySpeed);
-
-            crosshaairUI.SetSpread(currentSpread);
+            
         }
+        onCrossHairEvent.Invoke(currentSpread);
     }
 
     public override void StartWeaponAction(int type =0)
     {
-        // 재장전 중일 때는 무기 액션을 할 수 없다
-        if (isReload == true) return;
+        // 무기가 없을때 무기 액션 차단
+        if (!isEquipped) return;
+        if (attackCoroutine != null) return;
 
         // 모드 전환중이면 무기 액션을 할 수 없다
         if (isModeChange == true) return;
@@ -124,10 +130,21 @@ public class WeaponAssaultRifle : WeaponBase
 
     public override void ThrowWeapon()
     {
-        Debug.Log("Throw");
-
         // 공격 / 모드 전환 중이면 무시
         if (isAttack || isModeChange) return;
+
+        GameObject obj = Instantiate(throwWeaponPrepfab,throwPoint.position,Quaternion.identity);
+
+        // 던지기에 물리적인 힘 주입
+        Rigidbody rb = obj.GetComponent<Rigidbody>();
+
+        obj.transform.rotation = mainCamera.transform.rotation;
+
+        // 앞으로 날아가는 힘
+        rb.AddForce(mainCamera.transform.forward * throwForce, ForceMode.Impulse);
+        // 회전 토크 값
+        Vector3 spinAxis = mainCamera.transform.rotation * Vector3.right;
+        rb.angularVelocity = spinAxis * spinForce;
 
         // 현재 무기 비활성화
         weaponSwitchSystem.ClearCurrentWeapon(this);
@@ -137,17 +154,6 @@ public class WeaponAssaultRifle : WeaponBase
 
         // 무기 오브젝트 제거
         Destroy(gameObject);
-    }
-
-    public override void StartReload()
-    {
-        // 현재 재장전 중이면 재장전 불가능
-        if (isReload == true || weaponSetting.currentMagazine <= 0) return;
-
-        // 무기 액션 도중에 'R'키를 눌러 재장전을 시도하면 무기 액션 종료 후 재장전
-        StopWeaponAction();
-
-        StartCoroutine("OnReload");
     }
 
     private IEnumerator OnAttackLoop()
@@ -162,6 +168,8 @@ public class WeaponAssaultRifle : WeaponBase
 
     public void OnAttack()
     {
+        if(!isEquipped) return;
+
         if ( Time.time - lasetAttackTime > weaponSetting.attackRate)
         {
             // 뛰고 있을 때는 공격할 수 없다
@@ -197,10 +205,9 @@ public class WeaponAssaultRifle : WeaponBase
             // 광선을 발사해 원하는 위치 공격 (+Impact Effect)
             TwoStepRaycast();
 
+            // 탄퍼짐 증가
             currentSpread += weaponSetting.spreadIncreasePerShot;
             currentSpread = Mathf.Clamp(currentSpread, weaponSetting.minSpread, weaponSetting.maxSpread);
-            // CroosHair Ui에 정보 전달
-            crosshaairUI.SetSpread(currentSpread);
         }
     }
 
@@ -213,37 +220,6 @@ public class WeaponAssaultRifle : WeaponBase
         muzzleFlashEffect.SetActive(false);
     }
 
-    private IEnumerator OnReload()
-    {
-        isReload = true;
-
-        // 재장전 애니메이션,사운드 재생
-        animator.OnReload();
-        PlaySound(audioClipReload);
-
-        while(true)
-        {
-            // 사운드가 재생중이 아니고, 현재 애니메이션이 Movement이면
-            // 재장전 애니메이션(,사운드) 재생이 종료되었다는 뜻
-            if( audioSource.isPlaying == false && animator.CurrentAnimationIs("Movement"))
-            {
-                isReload = false;
-
-                // 현재 탄창 수를 1 감소시키고, 바뀐 탄창 정보를 Text UI에 업데이트
-                weaponSetting.currentMagazine--;
-                onMagazineEvent.Invoke(weaponSetting.currentMagazine);
-
-                // 현재 탄 수를 최대로 설정하고, 바뀐 탄 수 정보를 Text UI에 업데이트
-                weaponSetting.currentAmmo = weaponSetting.maxAmmo;
-                onAmmoEvent.Invoke(weaponSetting.currentAmmo,weaponSetting.maxAmmo);
-
-                yield break;
-            }
-
-            yield return null;
-        }
-    }
-
     private IEnumerator OnModeChange()
     {
         float current = 0;
@@ -251,7 +227,8 @@ public class WeaponAssaultRifle : WeaponBase
         float time = 0.35f;
 
         animator.AimModeIs = !animator.AimModeIs;
-        crosshaairUI.SetActive(!animator.AimModeIs);
+        // 조준 상태 변경 알림
+        onAimEvent.Invoke(animator.AimModeIs);
 
         float start = mainCamera.fieldOfView;
         float end = animator.AimModeIs == true ? aimModeFov : defaultModeFOV;
@@ -274,7 +251,6 @@ public class WeaponAssaultRifle : WeaponBase
 
     private void ResetVariables()
     {
-        isReload = false;
         isAttack = false;
         isModeChange = false;
         currentSpread = weaponSetting.minSpread;
@@ -339,12 +315,4 @@ public class WeaponAssaultRifle : WeaponBase
 
         return direction.normalized;
     }
-
-    public void IncreaseMagazine(int magazine)
-    {
-        weaponSetting.currentMagazine = CurrentMagazine + magazine > MaxMagazine ? MaxMagazine : CurrentMagazine + magazine;
-
-        onMagazineEvent.Invoke(CurrentMagazine);
-    }
-
 }

@@ -26,6 +26,10 @@ public class PlayerHUD : MonoBehaviour
     [SerializeField]
     private TextMeshProUGUI textAmmo;  //  현재/최대 탄 수 출력 Text
 
+    [Header("CorrsHair")]
+    [SerializeField]
+    private CrosshairUi crosshairUI;  // 크로스 헤어 Ui
+
     [Header("Magazine")]
     [SerializeField]
     private GameObject magazineUIPrefab;  // 탄창 UI 프리팹
@@ -58,8 +62,12 @@ public class PlayerHUD : MonoBehaviour
         // 사용 가능한 모든 무기의 이벤트 등록
         for (int i = 0; i < weapons.Length; ++i)
         {
+            if (weapons[i] == null) return;
+
             weapons[i].onAmmoEvent.AddListener(UpdateAmmoHUD);
             weapons[i].onMagazineEvent.AddListener(UpdateMagazineHUD);
+            weapons[i].onCrossHairEvent.AddListener(UpdateCrosshairHUD);
+            weapons[i].onAimEvent.AddListener(UpdateAimHUD);
         }
     }
 
@@ -132,6 +140,20 @@ public class PlayerHUD : MonoBehaviour
             StopCoroutine("OnBloodScreen");
             StartCoroutine("OnBloodScreen");
         }
+    }
+
+    private void UpdateCrosshairHUD(float spread)
+    {
+        if (crosshairUI == null) return;
+
+        crosshairUI.SetSpread(spread);
+    }
+
+    private void UpdateAimHUD(bool isAiming)
+    {
+        if ( crosshairUI == null) return;
+
+        crosshairUI.SetActive(!isAiming);
     }
 
     private IEnumerator OnBloodScreen()
