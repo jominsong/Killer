@@ -10,6 +10,10 @@ public class PlayerController : MonoBehaviour
     private KeyCode keyCodJump = KeyCode.Space;  // 점프 키
     [SerializeField]
     private KeyCode keyCodeThrow = KeyCode.R;  // 무기 던지기 키
+    [SerializeField]
+    private KeyCode keyCodeCrouch = KeyCode.LeftControl;  // 앉기 키
+    [SerializeField]
+    private KeyCode keyCodeProne = KeyCode.C;  // 엎드리기 키
 
     [Header("Audio Clips")]
     [SerializeField]
@@ -40,6 +44,7 @@ public class PlayerController : MonoBehaviour
         UpdateRotate();
         UpdateMove();
         UpdateJump();
+        UpdateCrouchAndProne();
         UpdateWeaponAction();
     }
 
@@ -59,15 +64,14 @@ public class PlayerController : MonoBehaviour
         // 이동중 일 때 (걷기 or 뛰기)
         if (x != 0 || z != 0)
         {
-            
 
             bool isRun = false;
 
             // 옆이나 뒤로 이동할 때는 달릴 수 없다
-            if( z > 0 ) isRun = Input.GetKey(keyCodeRun);
+            if (z > 0) isRun = Input.GetKey(keyCodeRun);
 
             movement.MoveSpeed = isRun == true ? status.RunSpeed : status.WalkSpeed;
-            if ( weapon != null )
+            if (weapon != null)
             {
                 if (weapon == null) return;
                 weapon.Animator.MoveSpeed = isRun == true ? 1 : 0.5f;
@@ -109,29 +113,51 @@ public class PlayerController : MonoBehaviour
         }
     }
 
+    private void UpdateCrouchAndProne()
+    {
+
+        if (Input.GetKeyDown(keyCodeCrouch))
+        {
+            if (Input.GetKey(keyCodeRun) && Input.GetAxisRaw("Vertical") > 0)
+            {
+                Vector3 moveDir = transform.forward;  // 전방으로 슬라이딩
+                movement.StartSlide(moveDir);
+            }
+            else
+            {
+                movement.ToggleCrouch();
+            }
+        }
+
+        if (Input.GetKeyDown(keyCodeProne))
+        {
+            movement.ToggleProne();
+        }
+    }
+
     private void UpdateWeaponAction()
     {
         if (weapon == null) return;
 
-        if( Input.GetMouseButtonDown(0))
+        if (Input.GetMouseButtonDown(0))
         {
             weapon.StartWeaponAction();
         }
-        else if ( Input.GetMouseButtonUp(0))
+        else if (Input.GetMouseButtonUp(0))
         {
             weapon.StopWeaponAction();
         }
 
-        if ( Input.GetMouseButtonDown(1))
+        if (Input.GetMouseButtonDown(1))
         {
             weapon.StartWeaponAction(1);
         }
-        else if ( Input.GetMouseButtonUp(1))
+        else if (Input.GetMouseButtonUp(1))
         {
             weapon.StopWeaponAction(1);
         }
 
-        if ( Input.GetKeyDown(keyCodeThrow))
+        if (Input.GetKeyDown(keyCodeThrow))
         {
             weapon.ThrowWeapon();
         }
@@ -141,7 +167,7 @@ public class PlayerController : MonoBehaviour
     {
         bool isDie = status.DecreaseHP(damage);
 
-        if ( isDie == true )
+        if (isDie == true)
         {
             Debug.Log("GameOver");
         }

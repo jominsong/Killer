@@ -8,7 +8,7 @@ public class Status : MonoBehaviour
     [HideInInspector]
     public HPEvent onHPEnvet = new HPEvent();
 
-    [Header("Walk, Run Speed")]
+    [Header("Walk,Run Speed")]
     [SerializeField]
     private float walkSpeed;
     [SerializeField]

@@ -17,11 +17,6 @@ public class PlayerAnimatorController : MonoBehaviour
         get => animator.GetFloat("movementSpeed");
     }
 
-    public void OnReload()
-    {
-        animator.SetTrigger("onReload");
-    }
-
     // Assault Rifle 마우스 오른쪽 클릭 액션 (default/aim mode)
     public bool AimModeIs
     {
