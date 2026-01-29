@@ -58,18 +58,25 @@ public class PlayerController : MonoBehaviour
 
     private void UpdateMove()
     {
+
         float x = Input.GetAxisRaw("Horizontal");
         float z = Input.GetAxisRaw("Vertical");
 
         // 이동중 일 때 (걷기 or 뛰기)
         if (x != 0 || z != 0)
         {
-
             bool isRun = false;
 
             // 옆이나 뒤로 이동할 때는 달릴 수 없다
-            if (z > 0) isRun = Input.GetKey(keyCodeRun);
+            if (z > 0)
+            {
+                isRun = Input.GetKey(keyCodeRun);
 
+                if (isRun && !movement.IsStanding && !movement.IsSliding && !movement.IsDiving)
+                {
+                    movement.Stand();
+                }
+            }
             movement.MoveSpeed = isRun == true ? status.RunSpeed : status.WalkSpeed;
             if (weapon != null)
             {
@@ -109,16 +116,32 @@ public class PlayerController : MonoBehaviour
     {
         if (Input.GetKeyDown(keyCodJump))
         {
-            movement.Jump();
+            // 슬라이딩 캔슬 로직
+            if (movement.IsSliding)
+            {
+                movement.SlideCancel();  // 슬켄
+                movement.ToggleCrouch();  // 즉시 서기로 전환
+            }
+            else if (!movement.IsStanding)
+            {
+                movement.Stand();
+            }
+            else
+            {
+                movement.Jump();
+            }
         }
     }
 
     private void UpdateCrouchAndProne()
     {
+        bool isRunning = Input.GetKey(keyCodeRun) && Input.GetAxisRaw("Vertical") > 0;
 
         if (Input.GetKeyDown(keyCodeCrouch))
         {
-            if (Input.GetKey(keyCodeRun) && Input.GetAxisRaw("Vertical") > 0)
+            
+
+            if (isRunning && movement.CanSlide)
             {
                 Vector3 moveDir = transform.forward;  // 전방으로 슬라이딩
                 movement.StartSlide(moveDir);
@@ -131,7 +154,19 @@ public class PlayerController : MonoBehaviour
 
         if (Input.GetKeyDown(keyCodeProne))
         {
-            movement.ToggleProne();
+            if (isRunning && !movement.IsDiving)
+            {
+                movement.StartDive(transform.forward);
+            }
+            else if (movement.IsSliding)
+            {
+                movement.SlideCancel();  // 슬켄
+                movement.ToggleCrouch();  // 즉시 서기로 전환
+            }
+            else
+            {
+                movement.ToggleProne();
+            }
         }
     }
 

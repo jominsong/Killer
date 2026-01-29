@@ -17,6 +17,7 @@ public struct WeaponSetting
     public float attackRate;  // 공격 속도
     public float attackDistance;  // 공격 사거리
     public bool isAutomaticAttack;  // 연속 공격 여부
+    [Header("Spread")]
     public float minSpread;  // 최소 탄퍼짐
     public float maxSpread;  // 최대 탄퍼짐
     public float spreadIncreasePerShot;  // 발사 시 증가량

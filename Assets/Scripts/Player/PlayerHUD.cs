@@ -28,7 +28,7 @@ public class PlayerHUD : MonoBehaviour
 
     [Header("CorrsHair")]
     [SerializeField]
-    private CrosshairUi crosshairUI;  // 크로스 헤어 Ui
+    public CrosshairUi crosshairUI;  // 크로스 헤어 Ui
 
     [Header("Magazine")]
     [SerializeField]

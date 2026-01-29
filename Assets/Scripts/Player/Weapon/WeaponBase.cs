@@ -28,6 +28,7 @@ public abstract class WeaponBase : MonoBehaviour
     protected bool isAttack = false;  // 공격 여부 체크용
     protected AudioSource audioSource;  // 사운드 재생 컴포넌트
     protected PlayerAnimatorController animator;  // 애니메이션 재생 제어
+    protected MovementCharacterController movement;  // 플레이어 무브먼트
     protected bool isEquipped = false;  // 장착 여부 확인
     protected Coroutine attackCoroutine;  // 코루틴 정리
 
@@ -63,6 +64,7 @@ public abstract class WeaponBase : MonoBehaviour
         audioSource = GetComponent<AudioSource>();
         animator = GetComponent<PlayerAnimatorController>();
         weaponSwitchSystem = UnityEngine.Object.FindFirstObjectByType<WeaponSwitchSystem>();
+        movement = GetComponentInParent<MovementCharacterController>();
     }
 
     public virtual void OnEquipped()

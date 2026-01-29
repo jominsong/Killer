@@ -78,10 +78,11 @@ public class WeaponAssaultRifle : WeaponBase
 
         if ( !isAttack)
         {
-            currentSpread = Mathf.Lerp(currentSpread, weaponSetting.minSpread,Time.deltaTime * weaponSetting.spreadRecoverySpeed);
+            currentSpread = Mathf.Lerp(currentSpread, 
+                weaponSetting.minSpread,Time.deltaTime * weaponSetting.spreadRecoverySpeed);
             
         }
-        onCrossHairEvent.Invoke(currentSpread);
+        if (animator != null && movement != null) GetSpreadDirection();
     }
 
     public override void StartWeaponAction(int type =0)
@@ -111,9 +112,6 @@ public class WeaponAssaultRifle : WeaponBase
         // 마우스 오른쪽 클릭 (모드 전환)
         else
         {
-            // 공격 중일 때는 모드 전환을 할 수 없다
-            if (isAttack == true) return;
-
             StartCoroutine("OnModeChange");
         }
     }
@@ -132,6 +130,7 @@ public class WeaponAssaultRifle : WeaponBase
     {
         // 공격 / 모드 전환 중이면 무시
         if (isAttack || isModeChange) return;
+        onAimEvent.Invoke(!animator.AimModeIs);
 
         GameObject obj = Instantiate(throwWeaponPrepfab,throwPoint.position,Quaternion.identity);
 
@@ -154,6 +153,13 @@ public class WeaponAssaultRifle : WeaponBase
 
         // 무기 오브젝트 제거
         Destroy(gameObject);
+    }
+
+    public override void OnEquipped()
+    {
+        base.OnEquipped();
+        base.Setup();
+        if (movement == null) movement = GetComponentInParent<MovementCharacterController>();
     }
 
     private IEnumerator OnAttackLoop()
@@ -299,15 +305,27 @@ public class WeaponAssaultRifle : WeaponBase
     private Vector3 GetSpreadDirection()
     {
         float spread = currentSpread;
-
-        // 조준 상태면 퍼짐 감소
-        if (animator.AimModeIs)
+        if (movement != null)
         {
-            spread *= weaponSetting.aimSpreadMultiplier;
+            // 이동속도에 따른 패널티 추가
+            float movementPenalty = movement.GetComponent<CharacterController>().velocity.magnitude;
+            spread += movementPenalty * 0.01f;
+
+            // 다이빙,슬라이딩은 추가 패널티
+            if (movement.IsDiving || movement.IsSliding) spread *= 1.0f;
+
+            else if (movement.IsCrouching) spread *= 0.7f;
+
+            else if (movement.IsProne) spread *= 0.5f;
+            // 조준 상태면 퍼짐 감소
+            if (animator.AimModeIs)
+            {
+                spread *= weaponSetting.aimSpreadMultiplier;
+            }
         }
+        onCrossHairEvent.Invoke(spread);
 
         Vector2 random = Random.insideUnitCircle * spread;
-
         Vector3 direction =
             mainCamera.transform.forward +
             mainCamera.transform.right * random.x +

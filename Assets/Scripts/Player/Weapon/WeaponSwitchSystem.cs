@@ -169,6 +169,7 @@ public class WeaponSwitchSystem : MonoBehaviour
 
         // HUD에 등록 갱신
         playerHUD.SetupAllWeapons(weapons);
+        playerHUD.crosshairUI.SetActive(true);
 
         // 바로 장착
         SwitchingWeapon(slot);

@@ -30,6 +30,7 @@ public class ItemWeaponAssaultRifle : ItemBase
         entity.GetComponentInChildren<WeaponAssaultRifle>();
 
         WeaponAssaultRifle newRifle = Instantiate(assaultRiflePrefab);
+        newRifle.SendMessage("Setup", SendMessageOptions.DontRequireReceiver);
 
         weaponSystem.AddWeapon(newRifle, WeaponType.main);
 
