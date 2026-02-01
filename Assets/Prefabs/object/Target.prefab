@@ -166,7 +166,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 83a463b010e63fe449df27cbcccd9a63, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  maxHP: 50
+  maxHP: 100
   clipTargetUp: {fileID: 8300000, guid: 83ed69ca21a297b4ab15a1e89abd4e4b, type: 3}
   clipTargetDown: {fileID: 8300000, guid: 0a3d74157d2f1714894e1358632773c8, type: 3}
   targetUpDelayTime: 3

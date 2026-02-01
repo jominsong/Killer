@@ -413,7 +413,7 @@ MonoBehaviour:
   weaponType: 0
   weaponSetting:
     weaponName: 0
-    damage: 50
+    damage: 20
     currentMagazine: 0
     maxMagazine: 10
     currentAmmo: 0

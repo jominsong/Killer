@@ -252,6 +252,8 @@ MonoBehaviour:
   projectileSpawnPoint: {fileID: 160380177502246254}
   attackRange: 5
   attackRate: 1
+  ItemDropPrefab: {fileID: 1352715449531312008, guid: 831928cc667c5e44885970ca599f054f, type: 3}
+  dropProbability: 0.5
 --- !u!114 &-6092340368037387503
 MonoBehaviour:
   m_ObjectHideFlags: 0

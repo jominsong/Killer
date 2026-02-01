@@ -3,6 +3,7 @@ using UnityEngine;
 
 public class EnemyMemoryPool : MonoBehaviour
 {
+    [Header("Enemy Spawn")]
     [SerializeField]
     private Transform target;  // 적의 목표 (플레이어)
     [SerializeField]
@@ -13,6 +14,11 @@ public class EnemyMemoryPool : MonoBehaviour
     private float enemySpawnTime = 1;  // 적 생성 주기
     [SerializeField]
     private float enemySpawnLatency = 1;  // 타일 생성 후 적이 등장하기까지 대기 시간
+
+    [Header("Spawn Limit")]
+    [SerializeField]
+    private int maxEnemyCount = 30;  // 월드에 존재할 수 있는 최대 적 숫자
+    private int currentEnemyCount = 0;  // 현재 활성화 된 적 숫자
 
     private MemoryPool spawnPointMemoryPool;  // 적 등장 위치를 알려주는 오브젝트 생성, 활성/비활성 관리
     private MemoryPool enemyMemoryPool;  // 적 생성, 활성/비활성 관리
@@ -31,27 +37,34 @@ public class EnemyMemoryPool : MonoBehaviour
     private IEnumerator SpawnTile()
     {
         int currentNumber = 0;
-        int maximumNumber = 50;
+        int maximumNumber = 30;
 
         while (true)
         {
-            // 동시에 numberOfEnemiesSpawnedAtOnce 숫자 만큼 적이 생성되도록 반복문 사용
-            for (int i = 0; i < numberOfEnemiesSpawnedAtOnce; ++ i)
+            // 현재 적 숫자가 최대치보다 적을 때만 스폰 시도
+            if (currentEnemyCount < maxEnemyCount)
             {
-                GameObject item = spawnPointMemoryPool.ActivatePoolItem();
+                for (int i = 0; i < numberOfEnemiesSpawnedAtOnce; ++i)
+                {
+                    // 루프 도중에도 최대치에 도달하면 중단
+                    if (currentEnemyCount >= maxEnemyCount) break;
 
-                item.transform.position = new Vector3(Random.Range(-mapSize.x * 0.49f, mapSize.x * 0.49f),
-                                        1, Random.Range(-mapSize.y * 0.49f, mapSize.y * 0.49f));
+                    GameObject item = spawnPointMemoryPool.ActivatePoolItem();
+                    item.transform.position = new Vector3(Random.Range(-mapSize.x * 0.49f, mapSize.x * 0.49f),
+                                            1, Random.Range(-mapSize.y * 0.49f, mapSize.y * 0.49f));
 
-                StartCoroutine("SpawnEnemy", item);
+                    StartCoroutine("SpawnEnemy", item);
+
+                    // 스폰 예정인 상태도 카운트에 포함 (중복 스폰 방지)
+                    currentEnemyCount++;
+                }
             }
 
             currentNumber++;
-
             if (currentNumber >= maximumNumber)
             {
                 currentNumber = 0;
-                numberOfEnemiesSpawnedAtOnce ++;
+                numberOfEnemiesSpawnedAtOnce++;
             }
 
             yield return new WaitForSeconds(enemySpawnTime);
@@ -75,5 +88,9 @@ public class EnemyMemoryPool : MonoBehaviour
     public void DeactivateEnemy(GameObject enemy)
     {
         enemyMemoryPool.DeactivatePoolItem(enemy);
+
+        currentEnemyCount--;
+
+        if (currentEnemyCount < 0) currentEnemyCount = 0;
     }
 }

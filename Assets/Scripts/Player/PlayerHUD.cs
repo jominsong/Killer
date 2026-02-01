@@ -48,6 +48,10 @@ public class PlayerHUD : MonoBehaviour
     [SerializeField]
     private AnimationCurve curveBloodScreen;
 
+    [Header("Interaction")]
+    [SerializeField]
+    private TextMeshProUGUI textInteraction;  // 상호작용 표시 Text
+
     private void Awake()
     {
         // 메소드가 등록되어 있는 이벤트 클래스(weapon.xx)의
@@ -77,7 +81,6 @@ public class PlayerHUD : MonoBehaviour
         
         if ( weapon == null)
         {
-            textWeaponName.text = "";
             imageWeaponIcon.enabled = false;
             textAmmo.text = "";
             return;
@@ -87,9 +90,23 @@ public class PlayerHUD : MonoBehaviour
         SetupWeapon();
     }
 
+    public void SetInteractionText(bool isVisible, string message = " ")
+    {
+        if (textInteraction == null) return;
+
+        if (isVisible)
+        {
+            textInteraction.text = message;
+            textInteraction.gameObject.SetActive(true);
+        }
+        else
+        {
+            textInteraction.gameObject.SetActive(false);
+        }
+    }
+
     private void SetupWeapon()
     {
-        textWeaponName.text = weapon.WeaponName.ToString();
         imageWeaponIcon.sprite = spriteWeaponIcons[(int)weapon.WeaponName];
         imageWeaponIcon.rectTransform.sizeDelta = sizeWeaponIcons[(int)weapon.WeaponName];
     }

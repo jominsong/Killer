@@ -175,4 +175,13 @@ public class WeaponSwitchSystem : MonoBehaviour
         SwitchingWeapon(slot);
     }
 
+    public bool HasWeapon(WeaponType type)
+    {
+        return weapons[(int)type] != null;
+    }
+
+    public WeaponBase GetWeapon(WeaponType type)
+    {
+        return weapons[(int)type];
+    }
 }
