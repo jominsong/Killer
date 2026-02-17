@@ -13,6 +13,7 @@ TagManager:
   - InteractionObject
   - Item
   - ThrowWeapon
+  - Coin
   layers:
   - Default
   - TransparentFX
@@ -22,7 +23,7 @@ TagManager:
   - UI
   - Player
   - Casing
-  - Grenade
+  - Item
   - ThorwWeapon
   - Weapon
   - 

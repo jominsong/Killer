@@ -29,6 +29,7 @@ public abstract class WeaponBase : MonoBehaviour
     protected AudioSource audioSource;  // 사운드 재생 컴포넌트
     protected PlayerAnimatorController animator;  // 애니메이션 재생 제어
     protected MovementCharacterController movement;  // 플레이어 무브먼트
+    protected CameraRecoil cameraRecoil;  // 카메라 반동
     protected bool isEquipped = false;  // 장착 여부 확인
     protected Coroutine attackCoroutine;  // 코루틴 정리
 
@@ -65,6 +66,7 @@ public abstract class WeaponBase : MonoBehaviour
         animator = GetComponent<PlayerAnimatorController>();
         weaponSwitchSystem = UnityEngine.Object.FindFirstObjectByType<WeaponSwitchSystem>();
         movement = GetComponentInParent<MovementCharacterController>();
+        cameraRecoil = Camera.main.GetComponent<CameraRecoil>();
     }
 
     public virtual void OnEquipped()

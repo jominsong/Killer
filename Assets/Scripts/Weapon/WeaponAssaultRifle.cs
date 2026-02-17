@@ -3,7 +3,6 @@ using UnityEditor;
 using UnityEngine;
 using UnityEngine.UI;
 
-
 public class WeaponAssaultRifle : WeaponBase
 {
     [Header("Fire Effects")]
@@ -160,6 +159,8 @@ public class WeaponAssaultRifle : WeaponBase
         base.OnEquipped();
         base.Setup();
         if (movement == null) movement = GetComponentInParent<MovementCharacterController>();
+        if (cameraRecoil != null && weaponSetting.recoilData != null)
+            cameraRecoil.SetRecoilData(weaponSetting.recoilData);
     }
 
     private IEnumerator OnAttackLoop()
@@ -208,6 +209,8 @@ public class WeaponAssaultRifle : WeaponBase
             // 탄피 생성
             casingMemoryPool.SpawnCasing(casingSpawnPoint.position, transform.right);
 
+            // 카메라 반동 적용
+            cameraRecoil.FireRecoil();
             // 광선을 발사해 원하는 위치 공격 (+Impact Effect)
             TwoStepRaycast();
 

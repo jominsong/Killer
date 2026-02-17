@@ -16,7 +16,6 @@ public class InteractionSystem : MonoBehaviour
     private void Awake()
     {
         playerHUD = Object.FindAnyObjectByType<PlayerHUD>();
-        if (playerHUD != null ) playerHUD.gameObject.SetActive(false);
     }
 
     private void Update()
@@ -32,17 +31,21 @@ public class InteractionSystem : MonoBehaviour
         if (Physics.SphereCast(ray, interactRadius, out hit, interactDistance, itemLayer))
         {
             ItemBase item = hit.collider.GetComponent<ItemBase>();
-            if (item != null)
+            InteractionBase interaction = hit.collider.GetComponent<InteractionBase>();
+
+            if (item != null || interaction != null)
             {
-                playerHUD.SetInteractionText(true, "F키를 눌러 습득");
+                playerHUD.SetInteractionText(true, "Press F");
 
                 if (Input.GetKeyDown(KeyCode.F))
                 {
-                    item.Use(gameObject);
+                    if (item !=null) item.Use(gameObject);
+                    else if (interaction != null) interaction.Use(gameObject);
                 }
                 return;
             }
         }
+
 
         // 감지된 아이템이 없으면 UI 끄기
         playerHUD.SetInteractionText(false);

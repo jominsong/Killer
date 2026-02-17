@@ -254,6 +254,8 @@ MonoBehaviour:
   attackRate: 1
   ItemDropPrefab: {fileID: 1352715449531312008, guid: 831928cc667c5e44885970ca599f054f, type: 3}
   dropProbability: 0.5
+  coinPrefab: {fileID: 3328778681324177818, guid: b05e597ddccbc7941b0bc87b84a02a61, type: 3}
+  Coins: 1
 --- !u!114 &-6092340368037387503
 MonoBehaviour:
   m_ObjectHideFlags: 0

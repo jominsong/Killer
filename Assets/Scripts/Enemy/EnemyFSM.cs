@@ -23,12 +23,16 @@ public class EnemyFSM : MonoBehaviour
     [SerializeField]
     private float attackRate = 1;  // 공격 속도
 
-    [Header("Drop Item")]
+    [Header("Drop Gun")]
     [SerializeField]
     private GameObject ItemDropPrefab;  // 드롭할 아이템
     [Range(0f, 1f)]
     [SerializeField]
-    private float dropProbability = 0.3f;  // 드롭 확률 1ㄹ = 100%
+    private float dropProbability = 0.3f;  // 드롭 확률 1f = 100%
+
+    [Header("Drop Coin")]
+    [SerializeField]
+    private GameObject coinPrefab;
 
     private EnemyState enemyState = EnemyState.None;  // 현재 적 행동
     private float lastAttackTime = 0;  // 공격 주기 계산용 변수
@@ -85,9 +89,11 @@ public class EnemyFSM : MonoBehaviour
         if (isDie == true)
         {
             TryDropItem();
+            DropCoins();
             enemyMemoryPool.DeactivateEnemy(gameObject);
         }
     }
+
     private void TryDropItem()
     {
         if (ItemDropPrefab == null) return;
@@ -99,6 +105,12 @@ public class EnemyFSM : MonoBehaviour
             // 현재 위치에 아이템 생성
             Instantiate(ItemDropPrefab,transform.position + Vector3.up *0.5f, Quaternion.identity);
         }
+    }
+
+    private void DropCoins()
+    {
+        GameObject coin = Instantiate(coinPrefab, transform.position + Vector3.up, Quaternion.identity);
+        coin.GetComponent<ItemCoin>().SetTarget(target);
     }
 
     private IEnumerator Idle()
@@ -301,7 +313,4 @@ public class EnemyFSM : MonoBehaviour
         Gizmos.DrawWireSphere(transform.position, attackRange);
     }
 
-     
-
-    
 }

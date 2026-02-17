@@ -32,7 +32,7 @@ public class ItemWeaponAssaultRifle : ItemBase
             WeaponBase oldWeapon = weaponSystem.GetWeapon(WeaponType.main);
             if (oldWeapon != null)
             {
-                // 물리적으로 던지기 실행
+                // 무기 던지기 실행
                 oldWeapon.ThrowWeapon();
                 // 시스템에서 제거 및 리스트 갱신
                 weaponSystem.RemoveWeapon(oldWeapon);

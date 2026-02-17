@@ -23,4 +23,6 @@ public struct WeaponSetting
     public float spreadIncreasePerShot;  // 발사 시 증가량
     public float spreadRecoverySpeed;  // 회복속도
     public float aimSpreadMultiplier;  // 조준시 탄퍼짐 감소량
+    [Header("Recoil")]
+    public RecoilData recoilData;
 }
