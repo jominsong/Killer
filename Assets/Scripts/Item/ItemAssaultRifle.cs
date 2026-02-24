@@ -1,8 +1,12 @@
 using System.Collections;
+using NUnit.Framework;
 using UnityEngine;
+using System.Collections.Generic;
 
 public class ItemWeaponAssaultRifle : ItemBase
 {
+    public List<WeaponAttachment> inheritedAttachments = new List<WeaponAttachment>();
+
     [SerializeField]
     private GameObject AssaultRifleEffectPrefab;
     [SerializeField]
@@ -19,6 +23,11 @@ public class ItemWeaponAssaultRifle : ItemBase
 
             yield return null;
         }
+    }
+
+    public void SetInGameAttachments(List<WeaponAttachment> newparts)
+    {
+        inheritedAttachments = new List<WeaponAttachment>(newparts);
     }
 
     public override void Use(GameObject entity)
@@ -41,7 +50,22 @@ public class ItemWeaponAssaultRifle : ItemBase
 
         // 새로운 무기 인스턴스 생성 및 설정
         WeaponAssaultRifle newRifle = Instantiate(assaultRiflePrefab);
-        newRifle.SendMessage("Setup", SendMessageOptions.DontRequireReceiver);
+
+        // modifirer 설정 및 기존 파츠 복구
+        WeaponModifier modifier = newRifle.GetComponent<WeaponModifier>();
+
+        if (modifier != null)
+        {
+            modifier.Setup(newRifle);
+
+            foreach (var part in inheritedAttachments)
+            {
+                if (part != null)
+                {
+                    modifier.AddAttachment(part);
+                }
+            }
+        }
 
         // 새 무기를 메인 슬롯에 등록 (자동 장착 및 활성화)
         weaponSystem.AddWeapon(newRifle, WeaponType.main);

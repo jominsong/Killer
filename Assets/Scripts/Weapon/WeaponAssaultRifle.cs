@@ -75,12 +75,9 @@ public class WeaponAssaultRifle : WeaponBase
     {
         if (!isEquipped) return;
 
-        if ( !isAttack)
-        {
-            currentSpread = Mathf.Lerp(currentSpread, 
-                weaponSetting.minSpread,Time.deltaTime * weaponSetting.spreadRecoverySpeed);
-            
-        }
+        currentSpread = Mathf.Lerp(currentSpread, 
+        weaponSetting.minSpread,Time.deltaTime * weaponSetting.spreadRecoverySpeed);
+
         if (animator != null && movement != null) GetSpreadDirection();
     }
 
@@ -133,11 +130,22 @@ public class WeaponAssaultRifle : WeaponBase
 
         GameObject obj = Instantiate(throwWeaponPrepfab,throwPoint.position,Quaternion.identity);
 
+        if ( modifier != null )
+        {
+            ThrownWeapon thrownScript = obj.GetComponent<ThrownWeapon>();
+            if (thrownScript != null)
+            {
+                // 현재 장착된 모든 파츠 리스트를 전달
+                thrownScript.SetSavedAttachments(modifier.GetCurrentAttachments());
+                // 시각적 동기화
+                modifier.SyncAttachmentsTo(obj);
+            }
+            
+        }
+
         // 던지기에 물리적인 힘 주입
         Rigidbody rb = obj.GetComponent<Rigidbody>();
-
         obj.transform.rotation = mainCamera.transform.rotation;
-
         // 앞으로 날아가는 힘
         rb.AddForce(mainCamera.transform.forward * throwForce, ForceMode.Impulse);
         // 회전 토크 값
@@ -209,13 +217,17 @@ public class WeaponAssaultRifle : WeaponBase
             // 탄피 생성
             casingMemoryPool.SpawnCasing(casingSpawnPoint.position, transform.right);
 
+            // 반동 데이터 가져오기
+            float finalRecoilMod = GetFinalRecoilMod();
+            float finalSpreadMod = GetFinalSpreadMod();
+
             // 카메라 반동 적용
-            cameraRecoil.FireRecoil();
+            cameraRecoil.FireRecoil(finalRecoilMod);
             // 광선을 발사해 원하는 위치 공격 (+Impact Effect)
             TwoStepRaycast();
 
             // 탄퍼짐 증가
-            currentSpread += weaponSetting.spreadIncreasePerShot;
+            currentSpread += weaponSetting.spreadIncreasePerShot * finalSpreadMod;
             currentSpread = Mathf.Clamp(currentSpread, weaponSetting.minSpread, weaponSetting.maxSpread);
         }
     }

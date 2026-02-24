@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 8f8c3dbe0463c604fa45415eac869928, type: 3}
   m_Name: AR_Recoil
   m_EditorClassIdentifier: 
-  recoilX: 3
+  recoilX: 10
   recoilY: 7
   snappiness: 5
   returnSpeed: 2

@@ -17,6 +17,8 @@ public class WeaponSwitchSystem : MonoBehaviour
     private WeaponBase currentWeapon;  // 현재 사용중인 무기
     private WeaponBase previousWeapon;  // 직전에 사용했던 무기
 
+    public WeaponBase CurrentWeapon => currentWeapon;
+
     private void Awake()
     {
         // 무기 정보 출력을 위해 현재 소지중인 모든 무기 이벤트 등록

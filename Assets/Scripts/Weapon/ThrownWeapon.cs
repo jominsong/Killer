@@ -1,7 +1,11 @@
+using NUnit.Framework;
 using UnityEngine;
+using System.Collections.Generic;
 
 public class ThrownWeapon : MonoBehaviour
 {
+    private List<WeaponAttachment> savedAttachments = new List<WeaponAttachment>();
+
     [Header("Damage")]
     [SerializeField]
     private int damage = 30;
@@ -55,6 +59,21 @@ public class ThrownWeapon : MonoBehaviour
             }
         }
 
+    }
+
+    public void StoreAttachments(Dictionary<AttachmentSlot,WeaponAttachment> attachments)
+    {
+        savedAttachments = new List<WeaponAttachment>(attachments.Values);
+    }
+
+    public List<WeaponAttachment> GetSavedAttachments()
+    {
+        return savedAttachments;
+    }
+
+    public void SetSavedAttachments(List<WeaponAttachment> attachments)
+    {
+        savedAttachments = attachments;
     }
 
 }

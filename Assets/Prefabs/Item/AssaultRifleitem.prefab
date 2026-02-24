@@ -121,6 +121,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 157718158ae87e244bed4eb4d33f7486, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  inheritedAttachments: []
   AssaultRifleEffectPrefab: {fileID: 0}
   rotateSpeed: 50
   assaultRiflePrefab: {fileID: 4094572878133102255, guid: d887686409493e745974f85760e9a16d, type: 3}

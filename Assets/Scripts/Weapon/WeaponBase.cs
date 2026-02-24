@@ -30,6 +30,7 @@ public abstract class WeaponBase : MonoBehaviour
     protected PlayerAnimatorController animator;  // 애니메이션 재생 제어
     protected MovementCharacterController movement;  // 플레이어 무브먼트
     protected CameraRecoil cameraRecoil;  // 카메라 반동
+    protected WeaponModifier modifier;  // 총기 개조 수치
     protected bool isEquipped = false;  // 장착 여부 확인
     protected Coroutine attackCoroutine;  // 코루틴 정리
 
@@ -46,6 +47,8 @@ public abstract class WeaponBase : MonoBehaviour
     // 외부에서 필요한 정보를 열람하기 위해 정의한 Get Property's
     public PlayerAnimatorController Animator => animator;
     public WeaponName WeaponName => weaponSetting.weaponName;
+    public WeaponSetting WeaponSetting => weaponSetting;
+    public WeaponType GetWeaponType() => weaponType;
     public int CurrentMagazine => weaponSetting.currentMagazine;
     public int MaxMagazine => weaponSetting.maxMagazine;
 
@@ -67,6 +70,12 @@ public abstract class WeaponBase : MonoBehaviour
         weaponSwitchSystem = UnityEngine.Object.FindFirstObjectByType<WeaponSwitchSystem>();
         movement = GetComponentInParent<MovementCharacterController>();
         cameraRecoil = Camera.main.GetComponent<CameraRecoil>();
+        modifier = GetComponent<WeaponModifier>();
+
+        if (WeaponSetting.recoilData != null)
+        {
+            weaponSetting.recoilData = weaponSetting.recoilData.Clone();
+        }
     }
 
     public virtual void OnEquipped()
@@ -83,5 +92,20 @@ public abstract class WeaponBase : MonoBehaviour
             StopCoroutine(attackCoroutine);
             attackCoroutine = null;
         }
+    }
+
+    public virtual void SetupModifier(WeaponModifier newmodifier)
+    {
+        modifier = newmodifier;
+    }
+
+    public virtual float GetFinalRecoilMod()
+    {
+        return (modifier != null) ? modifier.GetRecoilMod() : 1.0f;
+    }
+
+    public virtual float GetFinalSpreadMod()
+    {
+        return (modifier != null) ? modifier.GetSpreadMod() : 1.0f;
     }
 }

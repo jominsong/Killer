@@ -46,7 +46,6 @@ public class InteractionSystem : MonoBehaviour
             }
         }
 
-
         // 감지된 아이템이 없으면 UI 끄기
         playerHUD.SetInteractionText(false);
     }

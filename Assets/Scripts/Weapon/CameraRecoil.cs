@@ -27,7 +27,7 @@ public class CameraRecoil : MonoBehaviour
         if (targetRotation.magnitude < 0.1f) fireDuration = 0f;
     }
 
-    public void FireRecoil()
+    public void FireRecoil(float modifier = 1.0f)
     {
         if (recoilData == null) return;
 
@@ -37,8 +37,9 @@ public class CameraRecoil : MonoBehaviour
         float patternMultiplier = recoilData.recoilPatternX.Evaluate(fireDuration);
 
         // 수직은 위로(음수), 좌우는 랜덤하게 튀도록 설정
-        float recoilX = Random.Range(-recoilData.recoilX, recoilData.recoilX) + patternMultiplier;
+        float recoilX = Random.Range(-recoilData.recoilX, recoilData.recoilX) * modifier + patternMultiplier;
+        float recoilY = recoilData.recoilY * modifier;
 
-        targetRotation += new Vector3(-recoilData.recoilY, recoilX , 0);
+        targetRotation += new Vector3(-recoilY, recoilX , 0);
     }
 }
