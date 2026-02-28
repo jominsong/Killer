@@ -1,5 +1,6 @@
 using System;
 using NUnit.Framework.Constraints;
+using Unity.Cinemachine;
 using UnityEngine;
 using UnityEngine.Events;
 
@@ -7,8 +8,6 @@ public enum WeaponType { main =0 , sub , melee, Throw }
 
 [System.Serializable]
 public class AmmoEvent : UnityEngine.Events.UnityEvent<int, int> { }
-[System.Serializable]
-public class MagazineEvent : UnityEngine.Events.UnityEvent<int> { }
 [System.Serializable]
 public class CrossHairEvent : UnityEngine.Events.UnityEvent<float> { }
 [System.Serializable]
@@ -22,23 +21,24 @@ public abstract class WeaponBase : MonoBehaviour
     [SerializeField]
     protected WeaponSetting weaponSetting;  // 무기 설정
     [SerializeField]
+    protected WeaponRunTimeStats weaponRT;  // 무기 모딩 업데이트
+    [SerializeField]
     protected WeaponSwitchSystem weaponSwitchSystem;  // 무기 전환 시스템
 
     protected float lasetAttackTime = 0f;  // 마지막 발사시간 체크용
     protected bool isAttack = false;  // 공격 여부 체크용
+    protected bool isEquipped = false;  // 장착 여부 확인
     protected AudioSource audioSource;  // 사운드 재생 컴포넌트
     protected PlayerAnimatorController animator;  // 애니메이션 재생 제어
     protected MovementCharacterController movement;  // 플레이어 무브먼트
     protected CameraRecoil cameraRecoil;  // 카메라 반동
     protected WeaponModifier modifier;  // 총기 개조 수치
-    protected bool isEquipped = false;  // 장착 여부 확인
+    protected CameraEffects cameraEffects;  // 카메라 효과 제어
     protected Coroutine attackCoroutine;  // 코루틴 정리
 
     // 외부에서 이벤트 함수 등록을 할 수 있도록 public 선언
     [HideInInspector]
     public AmmoEvent onAmmoEvent = new AmmoEvent();
-    [HideInInspector]
-    public MagazineEvent onMagazineEvent = new MagazineEvent();
     [HideInInspector]
     public CrossHairEvent onCrossHairEvent = new CrossHairEvent();
     [HideInInspector]
@@ -50,7 +50,6 @@ public abstract class WeaponBase : MonoBehaviour
     public WeaponSetting WeaponSetting => weaponSetting;
     public WeaponType GetWeaponType() => weaponType;
     public int CurrentMagazine => weaponSetting.currentMagazine;
-    public int MaxMagazine => weaponSetting.maxMagazine;
 
     public abstract void StartWeaponAction(int type = 0);
     public abstract void StopWeaponAction(int type = 0);
@@ -71,11 +70,14 @@ public abstract class WeaponBase : MonoBehaviour
         movement = GetComponentInParent<MovementCharacterController>();
         cameraRecoil = Camera.main.GetComponent<CameraRecoil>();
         modifier = GetComponent<WeaponModifier>();
+        cameraEffects = GetComponentInParent<CameraEffects>();
 
         if (WeaponSetting.recoilData != null)
         {
             weaponSetting.recoilData = weaponSetting.recoilData.Clone();
         }
+
+        UpdateMod();
     }
 
     public virtual void OnEquipped()
@@ -99,13 +101,23 @@ public abstract class WeaponBase : MonoBehaviour
         modifier = newmodifier;
     }
 
-    public virtual float GetFinalRecoilMod()
+    public virtual void UpdateMod()
     {
-        return (modifier != null) ? modifier.GetRecoilMod() : 1.0f;
-    }
+        if (modifier != null)
+        {
+            // 무기 스텟 데이터
+            weaponRT.finalAmmo = weaponSetting.maxAmmo + modifier.GetMaxAmmo();
+            weaponRT.finalDamage = weaponSetting.damage * modifier.GetDamageMod();
+            weaponRT.finalAttackRate = weaponSetting.attackRate / modifier.GetAttacklateMod();
+            // float finalMoveSpeed = weaponSetting.movespeed * modifier.GetMoveSpeedMod();
 
-    public virtual float GetFinalSpreadMod()
-    {
-        return (modifier != null) ? modifier.GetSpreadMod() : 1.0f;
+            // 반동 데이터
+            weaponRT.vRecoil = modifier.GetVerticalRecoilMod();
+            weaponRT.hRecoil = modifier.GetHorizontalRecoilMod();
+
+            // 탄퍼짐 데이터
+            weaponRT.maxSpread = modifier.GetMaxSpreadMod();
+            // float increaseSpread = GetIncreaseSpreadMod();
+        }
     }
 }

@@ -11,7 +11,9 @@ public class RotateToMouse : MonoBehaviour
     private float limitMaxX = 50;   // 카메라 x축 회전 범위(최대)
     private float eulerAngleX;
     private float eulerAngleY;
-    
+
+    private Vector3 recoilRotation;  // 반동에 의한 회전값
+
     public void UpdateRotate(float mouseX,float mouseY)
     {
         eulerAngleY += mouseX * rotCamYAxisSpeed;  // 마우스 좌/우 이동으로 카메라 y축 회전
@@ -20,7 +22,13 @@ public class RotateToMouse : MonoBehaviour
         // 카메라 x축 회전의 경우 회전 범위를 설정
         eulerAngleX = ClampAngle(eulerAngleX,limitMinX,limitMaxX);
 
-        transform.rotation = Quaternion.Euler(eulerAngleX, eulerAngleY, 0);
+        Quaternion targetRot = Quaternion.Euler(eulerAngleX + recoilRotation.x, eulerAngleY + recoilRotation.y, 0);
+        transform.localRotation = targetRot;
+    }
+
+    public void SetRecoilRotaion(Vector3 rotation)
+    {
+        recoilRotation = rotation;
     }
 
     private float ClampAngle(float angle,float min , float max)

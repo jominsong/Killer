@@ -5,6 +5,7 @@ using System.Collections.Generic;
 
 public class ItemWeaponAssaultRifle : ItemBase
 {
+    [System.NonSerialized]
     public List<WeaponAttachment> inheritedAttachments = new List<WeaponAttachment>();
 
     [SerializeField]
@@ -13,6 +14,11 @@ public class ItemWeaponAssaultRifle : ItemBase
     private float rotateSpeed = 50;
     [SerializeField]
     private WeaponAssaultRifle assaultRiflePrefab;
+
+    private void Awake()
+    {
+        inheritedAttachments = new List<WeaponAttachment>(inheritedAttachments);
+    }
 
     private IEnumerator Start()
     {
@@ -67,6 +73,8 @@ public class ItemWeaponAssaultRifle : ItemBase
             }
         }
 
+        newRifle.SendMessage("UpdateMod",SendMessageOptions.DontRequireReceiver);
+
         // 새 무기를 메인 슬롯에 등록 (자동 장착 및 활성화)
         weaponSystem.AddWeapon(newRifle, WeaponType.main);
 
@@ -75,6 +83,14 @@ public class ItemWeaponAssaultRifle : ItemBase
             Instantiate(AssaultRifleEffectPrefab, transform.position, Quaternion.identity);
 
         Destroy(gameObject);
+    }
+
+    private void OnDisable()
+    {
+        if (inheritedAttachments != null)
+        {
+            inheritedAttachments.Clear();
+        }
     }
 }
 

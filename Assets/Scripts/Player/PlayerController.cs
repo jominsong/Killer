@@ -23,6 +23,7 @@ public class PlayerController : MonoBehaviour
 
     private RotateToMouse rotateToMouse;  // 마우스 이동으로 카메라 회전
     private MovementCharacterController movement;  // 키보드 입력으로 플레이어 이동,점프
+    private CharacterController characterController;  // 플레이어 이동 제어
     private Status status;  // 이동속도 등의 플레이어 정보
     private AudioSource audioSource;  // 사운드 재생 제어
     private WeaponBase weapon;  // 모든 무기가 상속받는 기반 클래스
@@ -33,10 +34,11 @@ public class PlayerController : MonoBehaviour
         Cursor.visible = false;
         Cursor.lockState = CursorLockMode.Locked;
 
-        rotateToMouse = GetComponent<RotateToMouse>();
+        rotateToMouse = GetComponentInChildren<RotateToMouse>();
         movement = GetComponent<MovementCharacterController>();
         status = GetComponent<Status>();
         audioSource = GetComponent<AudioSource>();
+        characterController = GetComponent<CharacterController>();
     }
 
     private void Update()
@@ -116,13 +118,14 @@ public class PlayerController : MonoBehaviour
     {
         if (Input.GetKeyDown(keyCodJump))
         {
+
             // 슬라이딩 캔슬 로직
             if (movement.IsSliding)
             {
                 movement.SlideCancel();  // 슬켄
                 movement.ToggleCrouch();  // 즉시 서기로 전환
             }
-            else if (!movement.IsStanding)
+            else if (!movement.IsStanding && characterController.isGrounded)
             {
                 movement.Stand();
             }

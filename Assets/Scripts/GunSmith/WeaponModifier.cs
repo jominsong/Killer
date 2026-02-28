@@ -106,9 +106,18 @@ public class WeaponModifier : MonoBehaviour
     }
 
     // 최종 반동 배율 계산
-    public float GetRecoilMod() { return CalculateMod(a => a.recoilMultiplier); }
-    public float GetSpreadMod() { return CalculateMod(a => a.spreadMultiplier); }
+    public float GetVerticalRecoilMod() { return CalculateMod(a => a.verticalrecoilMultiplier); }
+    public float GetHorizontalRecoilMod() { return CalculateMod(a =>a.horizontalrecoilMultiplier); }
+
+    // 최종 탄퍼짐 배율 계산
+    public float GetMaxSpreadMod() { return CalculateMod(a => a.maxspreadMultiplier); }
+    public float GetIncreaseSpreadMod() { return CalculateMod(a => a.increasespreadMultiplier); }
+
+    // 최종 부가 스텟 계산
     public float GetMoveSpeedMod() { return CalculateMod(a => a.moveSpeedMultiplier); }
+    public float GetAttacklateMod() { return CalculateMod(a => a.flattackRateMultiplier); }
+    public float GetDamageMod() { return CalculateMod(a => a.damageMultiplier); }
+    public int GetMaxAmmo() { return equippedAttachments.Values.Sum(a => a.MaxAmmoAdder); }
 
     private float CalculateMod(System.Func<WeaponAttachment, float> selector)
     {

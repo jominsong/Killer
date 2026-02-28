@@ -82,7 +82,7 @@ public class EnemyFSM : MonoBehaviour
         StartCoroutine(enemyState.ToString());
     }
 
-    public void TakeDamage(int damage)
+    public void TakeDamage(float damage)
     {
         bool isDie = status.DecreaseHP(damage);
 

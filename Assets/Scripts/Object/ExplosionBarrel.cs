@@ -15,7 +15,7 @@ public class ExplosionBarrel : InteractionObject
 
     private bool isExplode = false;
 
-    public override void TakeDamage(int damage)
+    public override void TakeDamage(float damage)
     {
         currentHP -= damage;
 

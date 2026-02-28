@@ -77,6 +77,7 @@ public class GunSmithManager : MonoBehaviour
             assaultRifleItemPrefab.SetInGameAttachments(currentParts);
         }
 
+        targetModifier.GetComponent<WeaponAssaultRifle>().UpdateMod();
         SetPlayerControl(true);
         gunSmithCanvas.SetActive(false);
         partSelectionUI.SetActive(false);

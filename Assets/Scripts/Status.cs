@@ -1,7 +1,7 @@
 using UnityEngine;
 
 [System.Serializable]
-public class HPEvent : UnityEngine.Events.UnityEvent<int, int> { }
+public class HPEvent : UnityEngine.Events.UnityEvent<float, float> { }
 
 public class Status : MonoBehaviour
 {
@@ -16,23 +16,23 @@ public class Status : MonoBehaviour
 
     [Header("HP")]
     [SerializeField]
-    private int maxHP = 100;
-    private int currentHP;
+    private float maxHP = 100;
+    private float currentHP;
 
     public float WalkSpeed => walkSpeed;
     public float RunSpeed => runSpeed;
 
-    public int CurrentHP => currentHP;
-    public int MaxHP => maxHP;
+    public float CurrentHP => currentHP;
+    public float MaxHP => maxHP;
 
     private void Awake()
     {
         currentHP = maxHP;
     }
 
-    public bool DecreaseHP(int damage)
+    public bool DecreaseHP(float damage)
     {
-        int previousHP = currentHP;
+        float previousHP = currentHP;
 
         currentHP = currentHP - damage > 0 ? currentHP - damage : 0;
 
@@ -46,9 +46,9 @@ public class Status : MonoBehaviour
         return false;
     }
 
-    public void IncreaseHP(int hp)
+    public void IncreaseHP(float hp)
     {
-        int previousHP = currentHP;
+        float previousHP = currentHP;
 
         currentHP = currentHP + hp > maxHP ? maxHP : currentHP + hp;
 

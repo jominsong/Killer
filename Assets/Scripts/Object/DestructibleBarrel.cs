@@ -8,7 +8,7 @@ public class DestructibleBarrel : InteractionObject
 
     private bool isDestroyed = false;
 
-    public override void TakeDamage(int damage)
+    public override void TakeDamage(float damage)
     {
         currentHP -= damage;
 

@@ -135,7 +135,7 @@ public class PlayerHUD : MonoBehaviour
         crosshairUI.SetActive(!isAiming);
     }
 
-    private void UpdateHPHUD(int previous, int current)
+    private void UpdateHPHUD(float previous, float current)
     {
         textHP.text = "HP" + current;
 

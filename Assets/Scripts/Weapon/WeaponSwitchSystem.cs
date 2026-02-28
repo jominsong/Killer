@@ -16,6 +16,7 @@ public class WeaponSwitchSystem : MonoBehaviour
 
     private WeaponBase currentWeapon;  // 현재 사용중인 무기
     private WeaponBase previousWeapon;  // 직전에 사용했던 무기
+    private CameraEffects cameraEffects;
 
     public WeaponBase CurrentWeapon => currentWeapon;
 

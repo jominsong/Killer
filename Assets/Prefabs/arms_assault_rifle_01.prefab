@@ -547,13 +547,13 @@ PrefabInstance:
       addedObject: {fileID: -3676576423820514893}
     - targetCorrespondingSourceObject: {fileID: 100012, guid: 182b7f11db452bc458d35a6c9eced06f, type: 3}
       insertIndex: -1
+      addedObject: {fileID: 3835722803471861632}
+    - targetCorrespondingSourceObject: {fileID: 100012, guid: 182b7f11db452bc458d35a6c9eced06f, type: 3}
+      insertIndex: -1
       addedObject: {fileID: 6057819635550278971}
     - targetCorrespondingSourceObject: {fileID: 100012, guid: 182b7f11db452bc458d35a6c9eced06f, type: 3}
       insertIndex: -1
       addedObject: {fileID: 5504015909643481491}
-    - targetCorrespondingSourceObject: {fileID: 100012, guid: 182b7f11db452bc458d35a6c9eced06f, type: 3}
-      insertIndex: -1
-      addedObject: {fileID: 3835722803471861632}
     - targetCorrespondingSourceObject: {fileID: 100012, guid: 182b7f11db452bc458d35a6c9eced06f, type: 3}
       insertIndex: -1
       addedObject: {fileID: 7564895318459905491}
@@ -580,7 +580,6 @@ MonoBehaviour:
     weaponName: 0
     damage: 20
     currentMagazine: 0
-    maxMagazine: 10
     currentAmmo: 0
     maxAmmo: 50
     attackRate: 0.1
@@ -592,11 +591,17 @@ MonoBehaviour:
     spreadRecoverySpeed: 5
     aimSpreadMultiplier: 0.1
     recoilData: {fileID: 11400000, guid: 65fb65befb085c5449c6731cc72608d0, type: 2}
+  weaponRT:
+    finalAmmo: 0
+    finalDamage: 0
+    finalAttackRate: 0
+    finalMoveSpeed: 0
+    vRecoil: 0
+    hRecoil: 0
+    maxSpread: 0
+    increaseSpread: 0
   weaponSwitchSystem: {fileID: 0}
   onAmmoEvent:
-    m_PersistentCalls:
-      m_Calls: []
-  onMagazineEvent:
     m_PersistentCalls:
       m_Calls: []
   onCrossHairEvent:
@@ -628,6 +633,18 @@ MonoBehaviour:
   gripPoint: {fileID: 8928408565497617329}
   scopePoint: {fileID: 6134306722183549291}
   magazinePoint: {fileID: 2682708597034861525}
+--- !u!114 &3835722803471861632
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 796266632520106930}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 61937977cfb5dbc4285df2c06d40a6d6, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
 --- !u!114 &6057819635550278971
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -658,18 +675,6 @@ MonoBehaviour:
   - {fileID: 7769281060390126552, guid: bd4536f343900a741b6cb868fa60e89f, type: 3}
   - {fileID: 7769281060390126552, guid: b1d9bdcd2386b5d45b97d773b833c1e4, type: 3}
   - {fileID: 7769281060390126552, guid: c28ed55878bd9a540b683765fd83ce70, type: 3}
---- !u!114 &3835722803471861632
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 796266632520106930}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 61937977cfb5dbc4285df2c06d40a6d6, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
 --- !u!82 &7564895318459905491
 AudioSource:
   m_ObjectHideFlags: 0

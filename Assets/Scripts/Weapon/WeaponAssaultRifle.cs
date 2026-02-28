@@ -1,7 +1,6 @@
 using System.Collections;
-using UnityEditor;
 using UnityEngine;
-using UnityEngine.UI;
+using Unity.Cinemachine;
 
 public class WeaponAssaultRifle : WeaponBase
 {
@@ -37,6 +36,8 @@ public class WeaponAssaultRifle : WeaponBase
     private CasingMemoryPool casingMemoryPool;  // 탄피 생성 후 활성/비활성 관리
     private ImpactMemoryPool impactMemoryPool;  // 공격 효과 생성 후 활성/비활성 관리
     private Camera mainCamera;  // 광선 발사
+    private Camera weaponCamera;
+    private CinemachineCamera virtualCamera;  // 가상 카메라
 
     private void Awake()
     {
@@ -45,12 +46,11 @@ public class WeaponAssaultRifle : WeaponBase
 
         casingMemoryPool = GetComponent<CasingMemoryPool>();
         impactMemoryPool = GetComponent<ImpactMemoryPool>();
-        mainCamera = Camera.main;
 
-        // 처음 탄창 수는 최대로 설정
-        weaponSetting.currentMagazine = weaponSetting.maxMagazine;
+        FindCamera();
+        
         // 처음 탄 수는 최대로 설정
-        weaponSetting.currentAmmo = weaponSetting.maxAmmo;
+        weaponSetting.currentAmmo = weaponRT.finalAmmo;
         // 탄퍼짐 설정
         currentSpread = weaponSetting.minSpread;
     }
@@ -63,10 +63,12 @@ public class WeaponAssaultRifle : WeaponBase
         muzzleFlashEffect.SetActive(false);
         // 무기 활성화
         OnEquipped();
-        // 무기가 활성화될 때 해당 무기의 탄창 정보를 갱신한다
-        onMagazineEvent.Invoke(weaponSetting.currentMagazine);
         // 무기가 활성화될 때 해당 무기의 탄 수 정보를 갱신한다
-        onAmmoEvent.Invoke(weaponSetting.currentAmmo,weaponSetting.maxAmmo);
+        onAmmoEvent.Invoke(weaponSetting.currentAmmo, weaponRT.finalAmmo);
+
+        weaponSetting.currentAmmo = weaponRT.finalAmmo;
+
+        UpdateMod();
 
         ResetVariables();
     }
@@ -124,9 +126,10 @@ public class WeaponAssaultRifle : WeaponBase
 
     public override void ThrowWeapon()
     {
-        // 공격 / 모드 전환 중이면 무시
-        if (isAttack || isModeChange) return;
-        onAimEvent.Invoke(!animator.AimModeIs);
+        if (mainCamera.fieldOfView == aimModeFov) mainCamera.fieldOfView = defaultModeFOV;
+
+        onAimEvent.Invoke(animator.AimModeIs);
+        cameraEffects.SetTargetFOV(defaultModeFOV);
 
         GameObject obj = Instantiate(throwWeaponPrepfab,throwPoint.position,Quaternion.identity);
 
@@ -140,7 +143,6 @@ public class WeaponAssaultRifle : WeaponBase
                 // 시각적 동기화
                 modifier.SyncAttachmentsTo(obj);
             }
-            
         }
 
         // 던지기에 물리적인 힘 주입
@@ -151,9 +153,6 @@ public class WeaponAssaultRifle : WeaponBase
         // 회전 토크 값
         Vector3 spinAxis = mainCamera.transform.rotation * Vector3.right;
         rb.angularVelocity = spinAxis * spinForce;
-
-        // 현재 무기 비활성화
-        weaponSwitchSystem.ClearCurrentWeapon(this);
 
         // WeaponSwitchSystem 에 알림
         weaponSwitchSystem.RemoveWeapon(this);
@@ -166,45 +165,30 @@ public class WeaponAssaultRifle : WeaponBase
     {
         base.OnEquipped();
         base.Setup();
+        weaponSetting.currentAmmo = weaponRT.finalAmmo;
         if (movement == null) movement = GetComponentInParent<MovementCharacterController>();
         if (cameraRecoil != null && weaponSetting.recoilData != null)
             cameraRecoil.SetRecoilData(weaponSetting.recoilData);
-    }
-
-    private IEnumerator OnAttackLoop()
-    {
-        while (true)
-        {
-            OnAttack();
-
-            yield return null;
-        }
     }
 
     public void OnAttack()
     {
         if(!isEquipped) return;
 
-        if ( Time.time - lasetAttackTime > weaponSetting.attackRate)
+        if ( Time.time - lasetAttackTime > weaponRT.finalAttackRate)
         {
             // 뛰고 있을 때는 공격할 수 없다
-            if ( animator.MoveSpeed > 0.5f)
-            {
-                return;
-            }
+            if ( animator.MoveSpeed > 0.5f) return;
 
             // 공격주기가 되어야 공격할 수 있도록 하기 위해 현재 시간 저장
             lasetAttackTime = Time.time;
 
             // 탄 수가 없으면 공격 불가능
-            if (weaponSetting.currentAmmo <= 0)
-            {
-                return;
-            }
+            if (weaponSetting.currentAmmo <= 0) return;
 
             // 공격시 currentAmmo 1 감소, 탄 수 UI 업데이트
             weaponSetting.currentAmmo--;
-            onAmmoEvent.Invoke(weaponSetting.currentAmmo, weaponSetting.maxAmmo);
+            onAmmoEvent.Invoke(weaponSetting.currentAmmo, weaponRT.finalAmmo);
 
             // 무기 에니메이션 재생 (모드에 따라 AimFire or Fire 애니메이션 재생)
             string animation = animator.AimModeIs == true ? "AimFire" : "Fire";
@@ -217,18 +201,28 @@ public class WeaponAssaultRifle : WeaponBase
             // 탄피 생성
             casingMemoryPool.SpawnCasing(casingSpawnPoint.position, transform.right);
 
-            // 반동 데이터 가져오기
-            float finalRecoilMod = GetFinalRecoilMod();
-            float finalSpreadMod = GetFinalSpreadMod();
-
-            // 카메라 반동 적용
-            cameraRecoil.FireRecoil(finalRecoilMod);
             // 광선을 발사해 원하는 위치 공격 (+Impact Effect)
             TwoStepRaycast();
 
             // 탄퍼짐 증가
-            currentSpread += weaponSetting.spreadIncreasePerShot * finalSpreadMod;
+            currentSpread += weaponSetting.spreadIncreasePerShot * weaponRT.maxSpread;
             currentSpread = Mathf.Clamp(currentSpread, weaponSetting.minSpread, weaponSetting.maxSpread);
+
+            // 카메라 연출 호출
+            cameraEffects.PlayFireEffects();
+            
+            // 카메라 반동 적용
+            cameraRecoil.FireRecoil(weaponRT.vRecoil, weaponRT.hRecoil);
+        }
+    }
+
+    private IEnumerator OnAttackLoop()
+    {
+        while (true)
+        {
+            OnAttack();
+
+            yield return null;
         }
     }
 
@@ -252,21 +246,17 @@ public class WeaponAssaultRifle : WeaponBase
         onAimEvent.Invoke(animator.AimModeIs);
 
         float start = mainCamera.fieldOfView;
-        float end = animator.AimModeIs == true ? aimModeFov : defaultModeFOV;
+        float target = animator.AimModeIs == true ? aimModeFov : defaultModeFOV;
+        cameraEffects.SetTargetFOV(target);
 
         isModeChange = true;
-
         while (percent < 1)
         {
             current += Time.deltaTime;
             percent = current/time;
 
-            // mode에 따라 카메라의 시야각을 변경
-            mainCamera.fieldOfView = Mathf.Lerp(start, end, percent);
-
             yield return null;
         }
-
         isModeChange = false;
     }
 
@@ -296,7 +286,6 @@ public class WeaponAssaultRifle : WeaponBase
         {
             targetPoint = ray.origin + ray.direction*weaponSetting.attackDistance;
         }
-        Debug.DrawRay(ray.origin, ray.direction * weaponSetting.attackDistance, Color.red);
 
         // 첫번째 Raycast연산으로 얻어진 targetPoint를 목표지점으로 설정하고,
         // 총구를 시작지점으로 하여 Raycast 연산
@@ -307,11 +296,11 @@ public class WeaponAssaultRifle : WeaponBase
 
             if (hit.transform.CompareTag("ImpactEnemy"))
             {
-                hit.transform.GetComponent<EnemyFSM>().TakeDamage(weaponSetting.damage);
+                hit.transform.GetComponent<EnemyFSM>().TakeDamage(weaponRT.finalDamage);
             }
             else if (hit.transform.CompareTag("InteractionObject"))
             {
-                hit.transform.GetComponent<InteractionObject>().TakeDamage(weaponSetting.damage);
+                hit.transform.GetComponent<InteractionObject>().TakeDamage(weaponRT.finalDamage);
             }
         }
         Debug.DrawRay(bulletSpawnPoint.position,attackDirection*weaponSetting.attackDistance, Color.blue);
@@ -347,5 +336,20 @@ public class WeaponAssaultRifle : WeaponBase
             mainCamera.transform.up * random.y;
 
         return direction.normalized;
+    }
+
+    private void FindCamera()
+    {
+        mainCamera = Camera.main;
+
+        Camera[] allCameras = mainCamera.GetComponentsInChildren<Camera>();
+        foreach (Camera cam in allCameras)
+        {
+            if (cam != mainCamera && cam.gameObject.name.Contains("Weapon"))
+            {
+                weaponCamera = cam;
+                break;
+            }
+        }
     }
 }

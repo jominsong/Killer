@@ -14,12 +14,15 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   attachmentName: muzle
   slot: 0
-  attachmentIcon: {fileID: 21300000, guid: 364206cb355dcf7479b2cdec20b8ec68, type: 3}
+  attachmentIcon: {fileID: 21300018, guid: a1d46cd3f2614cc43be92ab44ea7d819, type: 3}
   cost: 5
-  recoilMultiplier: 0.01
-  spreadMultiplier: 0.1
-  MaxmagazineMultiplier: 3
-  moveSpeedMultiplier: 1
-  damageMultiplier: 1
   allowedWeaponTypes: 00000000
   attachmentPrefab: {fileID: 3231910497390868650, guid: 63cbdd712a6ae4a4180ca1e1faade9f0, type: 3}
+  verticalrecoilMultiplier: 0.1
+  horizontalrecoilMultiplier: 0.01
+  flattackRateMultiplier: 1.2
+  damageMultiplier: 2
+  MaxAmmoAdder: 100
+  moveSpeedMultiplier: 1
+  maxspreadMultiplier: 1
+  increasespreadMultiplier: 1

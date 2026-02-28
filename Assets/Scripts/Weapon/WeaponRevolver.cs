@@ -26,9 +26,6 @@ public class WeaponRevolver : WeaponBase
     {
         // 총구 이펙트 오브젝트 비활성화
         muzzleFlashEffect.SetActive(false);
-
-        // 무기가 활성화될 때 해당 무기의 탄창 정보를 갱신한다
-        onMagazineEvent.Invoke(weaponSetting.currentMagazine);
         // 무기가 활성화될 때 해당 무기의 탄 수 정보를 갱신하다
         onAmmoEvent.Invoke(weaponSetting.currentAmmo, weaponSetting.maxAmmo);
 
@@ -43,8 +40,6 @@ public class WeaponRevolver : WeaponBase
         impactMemoryPool = GetComponent<ImpactMemoryPool>();
         mainCamera = Camera.main;
 
-        // 처음 탄창 수는 최대로 설정
-        weaponSetting.currentMagazine = weaponSetting.maxMagazine;
         // 처음 탄 수는 최대로 설정
         weaponSetting.currentAmmo = weaponSetting.maxAmmo;
     }

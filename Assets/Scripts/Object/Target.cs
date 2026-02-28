@@ -18,7 +18,7 @@ public class Target : InteractionObject
         audioSource = GetComponent<AudioSource>();
     }
 
-    public override void TakeDamage(int damage)
+    public override void TakeDamage(float damage)
     {
         currentHP -= damage;
 
