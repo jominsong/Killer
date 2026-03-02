@@ -70,7 +70,7 @@ public abstract class WeaponBase : MonoBehaviour
         movement = GetComponentInParent<MovementCharacterController>();
         cameraRecoil = Camera.main.GetComponent<CameraRecoil>();
         modifier = GetComponent<WeaponModifier>();
-        cameraEffects = GetComponentInParent<CameraEffects>();
+        cameraEffects = FindAnyObjectByType<CameraEffects>();
 
         if (WeaponSetting.recoilData != null)
         {

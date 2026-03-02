@@ -27,6 +27,8 @@ public class PlayerController : MonoBehaviour
     private Status status;  // 이동속도 등의 플레이어 정보
     private AudioSource audioSource;  // 사운드 재생 제어
     private WeaponBase weapon;  // 모든 무기가 상속받는 기반 클래스
+    
+    public bool isRun = false;
 
     private void Awake()
     {
@@ -67,7 +69,6 @@ public class PlayerController : MonoBehaviour
         // 이동중 일 때 (걷기 or 뛰기)
         if (x != 0 || z != 0)
         {
-            bool isRun = false;
 
             // 옆이나 뒤로 이동할 때는 달릴 수 없다
             if (z > 0)

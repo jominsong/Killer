@@ -5,9 +5,12 @@ public class CameraEffects : MonoBehaviour
 {
     private CinemachineCamera virtualCamera;
     private CinemachineImpulseSource impulseSource;
+    private CinemachineBasicMultiChannelPerlin noise;
     private Camera weaponCamera;
+
     private MovementCharacterController movement;
     private CharacterController characterController;
+    private PlayerController playerController;
 
     [Header("FOV Settings")]
     // fov kick 
@@ -29,18 +32,35 @@ public class CameraEffects : MonoBehaviour
     [Header("Movement Settings")]
     [SerializeField]
     private float stepDistance = 2f;
+    [SerializeField]
+    private float lerpSpeed = 5f;
+    [SerializeField]
+    private float bobFrequency = 12f;      // 발걸음 속도
+    [SerializeField]
+    private float bobVerticalAmount = 0.08f;  // 위아래 폭
+    [SerializeField]
+    private float bobHorizontalAmount = 0.05f; // 좌우 폭
+    [SerializeField]
+    private float bobSmoothSpeed = 10f;
     private float shakeTimer;
     private float distanceAccumulator;
+    private float bobTimer;
+    private Vector3 currentBobOffset;
+    private Vector3 initialPosition;
 
     private void Awake()
     {
         impulseSource = GetComponent<CinemachineImpulseSource>();
+        weaponCamera = GameObject.Find("Weapon Camera")?.GetComponent<Camera>();
+        virtualCamera = GetComponent<CinemachineCamera>();
+        noise = virtualCamera.GetComponent<CinemachineBasicMultiChannelPerlin>();
+
         movement = GetComponentInParent<MovementCharacterController>();
         characterController = GetComponentInParent<CharacterController>();
-        weaponCamera = GameObject.Find("Weapon Camera")?.GetComponent<Camera>();
-        virtualCamera = GameObject.FindAnyObjectByType<CinemachineCamera>();
+        playerController = GetComponentInParent<PlayerController>();
 
         targetFOV = virtualCamera.Lens.FieldOfView;
+        initialPosition = transform.localPosition;
     }
 
     private void Update()
@@ -57,6 +77,8 @@ public class CameraEffects : MonoBehaviour
         // 흔들림 처리
         HandleMovementShake();
         if (shakeTimer > 0) shakeTimer -= Time.deltaTime;
+        HandleVHeadBob();
+        HandleNoise();
     }
 
     public void PlayFireEffects(float intensity = 1f)
@@ -125,16 +147,7 @@ public class CameraEffects : MonoBehaviour
 
         if (shakeTimer <= 0)
         {
-            if (movement.IsSliding)
-            {
-                impulseSource.ImpulseDefinition.ImpulseShape = CinemachineImpulseDefinition.ImpulseShapes.Rumble;
-
-                Vector3 randomVelocity = new Vector3(Random.Range(-0.05f, 0.05f), Random.Range(-0.05f, 0.05f), 0.02f);
-                impulseSource.GenerateImpulseWithVelocity(randomVelocity);
-                shakeTimer = 0.1f;
-                distanceAccumulator = 0;
-            }
-            else if (movement.IsDiving)
+            if (movement.IsDiving)
             {
                 impulseSource.ImpulseDefinition.ImpulseShape = CinemachineImpulseDefinition.ImpulseShapes.Bump;
                 impulseSource.GenerateImpulseWithVelocity(Random.insideUnitSphere * 0.02f);
@@ -142,16 +155,19 @@ public class CameraEffects : MonoBehaviour
                 distanceAccumulator = 0;
             }
             // 일반 이동(질주/걷기) 시 거리 기반 흔들림
+            else if (playerController.isRun && distanceAccumulator >= stepDistance)
+            {
+                distanceAccumulator = 0;
+
+                impulseSource.ImpulseDefinition.ImpulseShape = CinemachineImpulseDefinition.ImpulseShapes.Bump;
+                float intensity = 0.3f;
+                impulseSource.GenerateImpulseWithVelocity(new Vector3(0.1f * intensity, -0.1f * intensity, 0));
+
+                shakeTimer = 0.1f;
+            }
             else if (distanceAccumulator >= stepDistance)
             {
                 distanceAccumulator = 0;
-                impulseSource.ImpulseDefinition.ImpulseShape = CinemachineImpulseDefinition.ImpulseShapes.Bump;
-
-                float intensity = currentSpeed > 5f ? 1.2f : 0.6f;
-                impulseSource.GenerateImpulseWithVelocity(new Vector3(0.1f * intensity, -0.1f * intensity, 0));
-
-                // 연속 진동 방지용 아주 짧은 타이머
-                shakeTimer = 0.1f;
             }
         }
     }
@@ -167,4 +183,52 @@ public class CameraEffects : MonoBehaviour
         slideTiltKick = Mathf.MoveTowards(slideTiltKick, 0, Time.deltaTime * slidereturnSpeed);
         virtualCamera.Lens.Dutch = Mathf.Lerp(virtualCamera.Lens.Dutch, targetDutch + slideTiltKick, Time.deltaTime * sldiesmoothSpeed);
     }
+
+    private void HandleNoise()
+    {
+        if (movement.IsSliding && characterController.isGrounded)
+        {
+            noise.AmplitudeGain = Mathf.Lerp(noise.AmplitudeGain, 1.2f, Time.deltaTime * lerpSpeed);
+            noise.FrequencyGain = Mathf.Lerp(noise.FrequencyGain, 1.5f, Time.deltaTime * lerpSpeed);
+        }
+        else
+        { 
+            noise.AmplitudeGain = Mathf.Lerp(noise.AmplitudeGain, 0, Time.deltaTime * lerpSpeed);
+            noise.FrequencyGain = Mathf.Lerp(noise.FrequencyGain, 0, Time.deltaTime * lerpSpeed);
+        }
+    }
+
+    private void HandleVHeadBob()
+    {
+        Vector3 speed = new Vector3(characterController.velocity.x, 0, characterController.velocity.z);
+
+        // 달릴 때만 작동
+        if (playerController.isRun && characterController.isGrounded && speed.magnitude > 0.1f)
+        {
+            bobTimer += Time.deltaTime * bobFrequency;
+
+            // 수직 V자 움직임
+            float vBob = Mathf.Abs(Mathf.Sin(bobTimer * 0.5f)) * bobVerticalAmount;
+
+            // 좌우 움직임 (좌-우로 부드럽게 왔다갔다)
+            float hBob = Mathf.Cos(bobTimer * 0.5f) * bobHorizontalAmount;
+
+            currentBobOffset = new Vector2(hBob, -vBob);
+
+            noise.AmplitudeGain = Mathf.Lerp(noise.AmplitudeGain, 0.5f, Time.deltaTime * lerpSpeed);
+            noise.FrequencyGain = Mathf.Lerp(noise.FrequencyGain, 1.5f, Time.deltaTime * lerpSpeed);
+        }
+        else
+        {
+            // 멈추면 서서히 (0,0)로
+            bobTimer = 0;
+            currentBobOffset = Vector2.Lerp(currentBobOffset, Vector2.zero, Time.deltaTime * bobSmoothSpeed);
+
+            noise.AmplitudeGain = Mathf.Lerp(noise.AmplitudeGain, 0, Time.deltaTime * lerpSpeed);
+            noise.FrequencyGain = Mathf.Lerp(noise.FrequencyGain, 0, Time.deltaTime * lerpSpeed);
+        }
+        transform.localPosition = Vector3.Lerp(transform.localPosition, initialPosition + currentBobOffset, Time.deltaTime * bobSmoothSpeed);
+
+    }
 }
+
