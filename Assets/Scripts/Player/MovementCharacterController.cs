@@ -11,15 +11,20 @@ public class MovementCharacterController : MonoBehaviour
     private float moveSpeed;  //이동속도
     private float baseMoveSpeed = 0f;
     private Vector3 moveForce;  //이동 힘 (x,z와 y축을 별도로 계산해 실제 이동에 적용)
+
     public float MoveSpeed
     {
         set
         {
             baseMoveSpeed = Mathf.Max(0, value);
-            ApplyStanceSpeed();  // 상태에 따라 실제 속도 적용
+            if (!isTransitioning)
+                ApplyStanceSpeed();
+            else
+                ApplyTransitionSpeed(); // 전환 중엔 이전 자세 속도 유지
         }
         get => moveSpeed;
     }
+
     [SerializeField]
     private float jumpForce;  // 점프 힘
     [SerializeField]
@@ -38,7 +43,20 @@ public class MovementCharacterController : MonoBehaviour
     private float proneSpeedMultiplier = 0.25f;
     [SerializeField]
     private float stanceSmoothSpeed = 10f;  // 전환 속도
+    [SerializeField]
+    private float crouchStandSpeed = 6f;
+    [SerializeField]
+    private float proneStandSpeed = 3f;
+
     private float targetHeight;
+    private float currentSmoothSpeed;
+
+    // 서기 전환 중 이전 자세 추적
+    private Stance previousStance = Stance.Standing;
+    private bool isTransitioning = false;
+
+    public bool IsFullyStanding => IsStanding && !isTransitioning
+                             && Mathf.Abs(characterController.height - originalHeight) < 0.05f;
 
     [Header("Sliding")]
     [SerializeField]
@@ -63,17 +81,25 @@ public class MovementCharacterController : MonoBehaviour
     private float diveUpwardForce = 4f;  // 수직 상승량
     [SerializeField]
     private float diveDeceleration = 10f;  // 착지시 감속량
+    [SerializeField]
+    private float diveCooldown = 1.2f;  // 다이빙 재사용 대기시간
+    private float lastDiveTime = -99f;
     private float currentDiveSpeed;
 
+    public bool CanDive => characterController.isGrounded
+                    && IsStanding
+                    && !isTransitioning
+                    && Time.time >= lastDiveTime + diveCooldown;
+
     public bool IsDiving => currentStance == Stance.Diving;
-    public bool WasInAir;
+    public bool WasInAir { get; private set; }
     public bool IsSliding => currentStance == Stance.Sliding;
-    public bool IsStanding => currentStance == Stance.Standeing;
+    public bool IsStanding => currentStance == Stance.Standing;
     public bool IsCrouching => currentStance == Stance.Crouching;
     public bool IsProne => currentStance == Stance.Prone;
 
-    private enum Stance { Standeing, Crouching, Prone, Sliding, Diving }
-    private Stance currentStance = Stance.Standeing;
+    private enum Stance { Standing, Crouching, Prone, Sliding, Diving }
+    private Stance currentStance = Stance.Standing;
 
     private CharacterController characterController;  // 플레이어 이동 제어를 위한 컴포넌트
     private CameraEffects cameraEffects;
@@ -92,19 +118,16 @@ public class MovementCharacterController : MonoBehaviour
     {
         UpdateStanceSmoothly();  // 매 프레임 높이 보간
 
-        if (currentStance == Stance.Sliding)
+        switch (currentStance)
         {
-            UpdateSliding();
-        }
-        else if (currentStance == Stance.Diving)
-        {
-            UpdateDiving();
-        }
-        else
-        {
-            if (!characterController.isGrounded) moveForce.y += gravity * Time.deltaTime;
-            else if (moveForce.y < 0) moveForce.y = -2f; // 지면에 붙어있게 유지
-
+            case Stance.Sliding: UpdateSliding(); break;
+            case Stance.Diving: UpdateDiving(); break;
+            default:
+                if (!characterController.isGrounded)
+                    moveForce.y += gravity * Time.deltaTime;
+                else if (moveForce.y < 0)
+                    moveForce.y = -2f;// 지면에 붙어있게 유지
+                break;
         }
         // 1초당 moveForce 속력으로 이동
         characterController.Move(moveForce * Time.deltaTime);
@@ -114,7 +137,6 @@ public class MovementCharacterController : MonoBehaviour
     {
         if (IsSliding || IsDiving) return;
 
-        // 1. 입력 방향 계산
         direction = transform.rotation * new Vector3(direction.x, 0, direction.z);
 
         if (direction.sqrMagnitude > 0.01f)
@@ -125,60 +147,33 @@ public class MovementCharacterController : MonoBehaviour
         }
         else
         {
-            if (Mathf.Abs(characterController.height - targetHeight) > 0.001f)
-            {
-                moveForce.x = 0.0001f; // 눈에 보이지 않는 미세 이동
-            }
-            else
-            {
-                moveForce.x = 0;
-            }
-            moveForce.z = 0;
+            moveForce.x = 0f;
+            moveForce.z = 0f;
         }
-
-        Vector3 finalMove = new Vector3(moveForce.x, moveForce.y, moveForce.z);
-
-        // 3. 물리 이동 적용
-        characterController.Move(finalMove * Time.deltaTime);
     }
 
     public void Jump()
     {
         // 플레이어가 바닥에 있을 때만 점프 가능
         if (characterController.isGrounded)
-        {
             moveForce.y = jumpForce;
-        }
     }
 
     public void ToggleCrouch()
     {
-        if (currentStance == Stance.Crouching)
-        {
-            Stand();
-        }
-        else
-        {
-            Crouch();
-        }
+        if (currentStance == Stance.Crouching) Stand();
+        else Crouch();
     }
 
     public void ToggleProne()
     {
-        if (currentStance == Stance.Prone)
-        {
-            Stand();
-        }
-        else
-        {
-            Prone();
-        }
+        if (currentStance == Stance.Prone) Stand();
+        else Prone();
     }
 
     public void StartSlide(Vector3 direction)
     {
         if (currentStance == Stance.Sliding || !CanSlide) return;
-
 
         currentStance = Stance.Sliding;
         slideTimer = slideDuration;
@@ -190,15 +185,12 @@ public class MovementCharacterController : MonoBehaviour
 
     public void SlideCancel()
     {
-        if (currentStance == Stance.Sliding)
-        {
-            StopSlide();
-        }
+        if (currentStance == Stance.Sliding) StopSlide();
     }
 
     public void StartDive(Vector3 direction)
     {
-        if (!characterController.isGrounded || IsDiving) return;
+        if (!CanDive) return;
 
         currentStance = Stance.Diving;
         currentDiveSpeed = diveForwardForce;
@@ -206,6 +198,7 @@ public class MovementCharacterController : MonoBehaviour
 
         // 다이빙시 엎드리기 높이로 변경
         targetHeight = proneHeight;
+        lastDiveTime = Time.time;
 
         // 전방 및 상방 힘 계산
         slideDirection = direction.normalized;
@@ -215,22 +208,38 @@ public class MovementCharacterController : MonoBehaviour
 
     public void Stand()
     {
+        if (currentStance == Stance.Standing) return;
+
+        previousStance = currentStance;
+        currentStance = Stance.Standing;
         targetHeight = originalHeight;
-        currentStance = Stance.Standeing;
-        ApplyStanceSpeed();
+        isTransitioning = true;
+
+        currentSmoothSpeed = previousStance == Stance.Prone
+            ? proneStandSpeed
+            : crouchStandSpeed;
+
+        // 전환 시작 시 이전 자세 속도 즉시 반영
+        ApplyTransitionSpeed();
     }
 
     private void Crouch()
     {
-        targetHeight = crouchHeight;
+        previousStance = currentStance;
         currentStance = Stance.Crouching;
+        targetHeight = crouchHeight;
+        isTransitioning = false;
+        currentSmoothSpeed = stanceSmoothSpeed;
         ApplyStanceSpeed();
     }
 
     private void Prone()
     {
-        targetHeight = proneHeight;
+        previousStance = currentStance;
         currentStance = Stance.Prone;
+        targetHeight = proneHeight;
+        isTransitioning = false;
+        currentSmoothSpeed = stanceSmoothSpeed;
         ApplyStanceSpeed();
     }
 
@@ -238,17 +247,14 @@ public class MovementCharacterController : MonoBehaviour
     {
         switch (currentStance)
         {
-            case Stance.Standeing:
+            case Stance.Standing:
                 moveSpeed = baseMoveSpeed;
-                targetHeight = originalHeight;
                 break;
             case Stance.Crouching:
                 moveSpeed = baseMoveSpeed * crouchSpeedMultiplier;
-                targetHeight = crouchHeight;
                 break;
             case Stance.Prone:
                 moveSpeed = baseMoveSpeed * proneSpeedMultiplier;
-                targetHeight = proneHeight;
                 break;
         }
     }
@@ -266,13 +272,17 @@ public class MovementCharacterController : MonoBehaviour
         }
 
         // 시간에 따라 속도 감속
-        float currentSlideSpeed = Mathf.Lerp(0, slideSpeed, slideTimer / slideDuration);
-        moveForce = new Vector3(slideDirection.x * currentSlideSpeed, moveForce.y, slideDirection.z * currentSlideSpeed);
+        float currentSlideSpeed = Mathf.Lerp(0, slideSpeed * speedMultiplier, slideTimer / slideDuration);
+        moveForce.x = slideDirection.x * currentSlideSpeed;
+        moveForce.z = slideDirection.z * currentSlideSpeed;
+
+        if (!characterController.isGrounded)
+            moveForce.y += gravity * Time.deltaTime;
+        else if (moveForce.y < 0)
+            moveForce.y = -2f;
 
         if (slideTimer <= 0)
-        {
             StopSlide();
-        }
     }
 
     private void StopSlide()
@@ -295,7 +305,7 @@ public class MovementCharacterController : MonoBehaviour
             moveForce.x = horizontalVel.x;
             moveForce.z = horizontalVel.z;
         }
-        // 2. 지면 상태 (착지 후)
+        // 지면 상태 (착지 후)
         else
         {
             // 착지 시 y축 힘 안정화
@@ -316,9 +326,7 @@ public class MovementCharacterController : MonoBehaviour
 
             // 속도가 거의 멈췄을 때만 정지
             if (currentDiveSpeed <= 0.1f)
-            {
                 StopDive();
-            }
         }
     }
 
@@ -340,9 +348,37 @@ public class MovementCharacterController : MonoBehaviour
 
     private void UpdateStanceSmoothly()
     {
-        // 현재 높이에서 목표 높이로 부드럽게 이동
-        float newHeight = Mathf.Lerp(characterController.height, targetHeight, Time.deltaTime * stanceSmoothSpeed);
+        float heightDiff = Mathf.Abs(characterController.height - targetHeight);
 
-        characterController.height = newHeight;
+        // 전환 중 매 프레임 속도 강제 유지 (MoveSpeed setter 덮어쓰기 방어)
+        if (isTransitioning)
+            ApplyTransitionSpeed();
+
+        if (heightDiff < 0.01f)
+        {
+            characterController.height = targetHeight;
+
+            if (isTransitioning)
+            {
+                isTransitioning = false;
+                ApplyStanceSpeed(); // 완전히 일어난 후 정상 속도 적용
+            }
+            return;
+        }
+
+        characterController.height = Mathf.Lerp(
+            characterController.height,
+            targetHeight,
+            currentSmoothSpeed * Time.deltaTime
+        );
+    }
+
+    private void ApplyTransitionSpeed()
+    {
+        moveSpeed = previousStance == Stance.Prone
+            ? baseMoveSpeed * proneSpeedMultiplier
+            : previousStance == Stance.Crouching
+                ? baseMoveSpeed * crouchSpeedMultiplier
+                : baseMoveSpeed;
     }
 }

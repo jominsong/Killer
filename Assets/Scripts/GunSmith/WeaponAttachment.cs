@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-public enum AttachmentSlot { Muzle, Grip, Scope, Magazine, }
+public enum AttachmentSlot { Muzle, Grip, Scope, Magazine, Ammo, Spring}
 
 [CreateAssetMenu(fileName = "WeaponAttachment", menuName = "Scriptable Objects/WeaponAttachment")]
 public class WeaponAttachment : ScriptableObject
@@ -21,12 +21,16 @@ public class WeaponAttachment : ScriptableObject
     [Header("Recoil Modifiers")]
     public float verticalrecoilMultiplier = 1.0f;  // y축 반동 배율
     public float horizontalrecoilMultiplier = 1.0f;  // x축 반동 배율
+    public float visualrecoilMultiplier = 1.0f;  // 비주얼 리코일 배율
 
     [Header("Stat Modifiers")]
     public float flattackRateMultiplier = 1.0f;
     public float damageMultiplier = 1.0f;
-    public int MaxAmmoAdder = 0;
+    public int maxAmmoAdder = 0;
+    public float throwForceMultiplier = 1.0f;
     public float moveSpeedMultiplier = 1.0f;
+    public float distanceMultiplier = 1.0f;
+    public float zoomSpeedMultiplier = 1.0f;
 
     [Header("Spread Modifiers")]
     public float maxspreadMultiplier = 1.0f;

@@ -17,6 +17,10 @@ PrefabInstance:
       value: 8
       objectReference: {fileID: 0}
     - target: {fileID: 100000, guid: e519d1fbc0246af438bb647b352d141f, type: 3}
+      propertyPath: m_IsActive
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 100000, guid: e519d1fbc0246af438bb647b352d141f, type: 3}
       propertyPath: m_TagString
       value: Item
       objectReference: {fileID: 0}
@@ -121,7 +125,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 157718158ae87e244bed4eb4d33f7486, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  inheritedAttachments: []
-  AssaultRifleEffectPrefab: {fileID: 0}
+  weaponType: 1
+  WeaponEffectPrefab: {fileID: 0}
   rotateSpeed: 50
-  assaultRiflePrefab: {fileID: 4094572878133102255, guid: d887686409493e745974f85760e9a16d, type: 3}
+  weaponPrefab: {fileID: 4094572878133102255, guid: d887686409493e745974f85760e9a16d, type: 3}

@@ -1,62 +1,59 @@
 using System.Collections;
 using UnityEngine;
 
-public class EnemyMemoryPool : MonoBehaviour
+/// <summary>
+/// 기존 EnemyMemoryPool  IEnemyPool 인터페이스 구현 추가.
+/// WaveEnemySpawner를 사용하지 않고 기존 방식을 유지할 경우 사용.
+/// </summary>
+public class EnemyMemoryPool : MonoBehaviour, IEnemyPool
 {
     [Header("Enemy Spawn")]
-    [SerializeField]
-    private Transform target;  // 적의 목표 (플레이어)
-    [SerializeField]
-    private GameObject enemySpawnPointPrefab;  // 적이 등장하기 전 적의 등장 위치를 알려주는 프리팹
-    [SerializeField]
-    private GameObject enemyPrefab;  // 생성되는 적 프리팹
-    [SerializeField]
-    private float enemySpawnTime = 1;  // 적 생성 주기
-    [SerializeField]
-    private float enemySpawnLatency = 1;  // 타일 생성 후 적이 등장하기까지 대기 시간
+    [SerializeField] private Transform target;
+    [SerializeField] private GameObject enemySpawnPointPrefab;
+    [SerializeField] private GameObject enemyPrefab;
+    [SerializeField] private float enemySpawnTime = 1f;
+    [SerializeField] private float enemySpawnLatency = 1f;
 
     [Header("Spawn Limit")]
-    [SerializeField]
-    private int maxEnemyCount = 30;  // 월드에 존재할 수 있는 최대 적 숫자
-    private int currentEnemyCount = 0;  // 현재 활성화 된 적 숫자
+    [SerializeField] private int maxEnemyCount = 30;
 
-    private MemoryPool spawnPointMemoryPool;  // 적 등장 위치를 알려주는 오브젝트 생성, 활성/비활성 관리
-    private MemoryPool enemyMemoryPool;  // 적 생성, 활성/비활성 관리
+    private MemoryPool spawnPointMemoryPool;
+    private MemoryPool enemyMemoryPool;
 
-    private int numberOfEnemiesSpawnedAtOnce = 1;  // 동시에 생성되는 적의 숫자
-    private Vector2Int mapSize = new Vector2Int(100, 100);  // 맵 크기
+    private int currentEnemyCount = 0;
+    private int numberOfEnemiesSpawnedAtOnce = 1;
+    private readonly Vector2Int mapSize = new Vector2Int(100, 100);
 
     private void Awake()
     {
         spawnPointMemoryPool = new MemoryPool(enemySpawnPointPrefab);
         enemyMemoryPool = new MemoryPool(enemyPrefab);
 
-        StartCoroutine("SpawnTile");
+        StartCoroutine(SpawnTile());
     }
 
     private IEnumerator SpawnTile()
     {
         int currentNumber = 0;
-        int maximumNumber = 30;
+        const int maximumNumber = 30;
 
         while (true)
         {
-            // 현재 적 숫자가 최대치보다 적을 때만 스폰 시도
             if (currentEnemyCount < maxEnemyCount)
             {
-                for (int i = 0; i < numberOfEnemiesSpawnedAtOnce; ++i)
+                for (int i = 0; i < numberOfEnemiesSpawnedAtOnce; i++)
                 {
-                    // 루프 도중에도 최대치에 도달하면 중단
                     if (currentEnemyCount >= maxEnemyCount) break;
 
                     GameObject item = spawnPointMemoryPool.ActivatePoolItem();
-                    item.transform.position = new Vector3(Random.Range(-mapSize.x * 0.49f, mapSize.x * 0.49f),
-                                            1, Random.Range(-mapSize.y * 0.49f, mapSize.y * 0.49f));
+                    item.transform.position = new Vector3(
+                        Random.Range(-mapSize.x * 0.49f, mapSize.x * 0.49f),
+                        1f,
+                        Random.Range(-mapSize.y * 0.49f, mapSize.y * 0.49f)
+                    );
 
-                    StartCoroutine("SpawnEnemy", item);
-
-                    // 스폰 예정인 상태도 카운트에 포함 (중복 스폰 방지)
-                    currentEnemyCount++;
+                    StartCoroutine(SpawnEnemy(item));
+                    currentEnemyCount++;  // 스폰 예약 포함 카운트
                 }
             }
 
@@ -75,22 +72,17 @@ public class EnemyMemoryPool : MonoBehaviour
     {
         yield return new WaitForSeconds(enemySpawnLatency);
 
-        // 적 오브젝트를 생성하고, 적의 위치를 point의 위치로 설정
         GameObject item = enemyMemoryPool.ActivatePoolItem();
         item.transform.position = point.transform.position;
+        item.GetComponent<EnemyFSM>().Setup(target, this);
 
-        item.GetComponent<EnemyFSM>().Setup(target,this);
-
-        // 타일 오브젝트를 비활성화
         spawnPointMemoryPool.DeactivatePoolItem(point);
     }
 
+    // IEnemyPool 구현
     public void DeactivateEnemy(GameObject enemy)
     {
         enemyMemoryPool.DeactivatePoolItem(enemy);
-
-        currentEnemyCount--;
-
-        if (currentEnemyCount < 0) currentEnemyCount = 0;
+        currentEnemyCount = Mathf.Max(0, currentEnemyCount - 1);
     }
 }

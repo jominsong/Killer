@@ -4,7 +4,9 @@ using Unity.Cinemachine;
 using UnityEngine;
 using UnityEngine.Events;
 
-public enum WeaponType { main =0 , sub , melee, Throw }
+public enum WeaponType { HandGun =0, AR, SMG, ShotGun }
+
+public enum WeaponSlot {  Primary =0, Secondary =1}
 
 [System.Serializable]
 public class AmmoEvent : UnityEngine.Events.UnityEvent<int, int> { }
@@ -17,7 +19,9 @@ public abstract class WeaponBase : MonoBehaviour
 {
     [Header("WeaponBase")]
     [SerializeField]
-    protected WeaponType weaponType;  // 무기 종류
+    protected WeaponType weaponType;  // 무기 군
+    [SerializeField]
+    protected WeaponSlot weaponSlot;  // 무기 슬롯
     [SerializeField]
     protected WeaponSetting weaponSetting;  // 무기 설정
     [SerializeField]
@@ -32,9 +36,11 @@ public abstract class WeaponBase : MonoBehaviour
     protected PlayerAnimatorController animator;  // 애니메이션 재생 제어
     protected MovementCharacterController movement;  // 플레이어 무브먼트
     protected CameraRecoil cameraRecoil;  // 카메라 반동
+    protected WeaponVisualRecoil visualRecoil;  // 비주얼 리코일
     protected WeaponModifier modifier;  // 총기 개조 수치
     protected CameraEffects cameraEffects;  // 카메라 효과 제어
     protected Coroutine attackCoroutine;  // 코루틴 정리
+    
 
     // 외부에서 이벤트 함수 등록을 할 수 있도록 public 선언
     [HideInInspector]
@@ -49,7 +55,7 @@ public abstract class WeaponBase : MonoBehaviour
     public WeaponName WeaponName => weaponSetting.weaponName;
     public WeaponSetting WeaponSetting => weaponSetting;
     public WeaponType GetWeaponType() => weaponType;
-    public int CurrentMagazine => weaponSetting.currentMagazine;
+    public WeaponSlot GetWeaponSlot() => weaponSlot;
 
     public abstract void StartWeaponAction(int type = 0);
     public abstract void StopWeaponAction(int type = 0);
@@ -65,16 +71,21 @@ public abstract class WeaponBase : MonoBehaviour
     protected void Setup()
     {
         audioSource = GetComponent<AudioSource>();
-        animator = GetComponent<PlayerAnimatorController>();
+        animator = GetComponentInParent<PlayerAnimatorController>();
+        if (animator == null)
+            animator = GetComponentInChildren<PlayerAnimatorController>();
         weaponSwitchSystem = UnityEngine.Object.FindFirstObjectByType<WeaponSwitchSystem>();
         movement = GetComponentInParent<MovementCharacterController>();
         cameraRecoil = Camera.main.GetComponent<CameraRecoil>();
+        visualRecoil = GetComponent<WeaponVisualRecoil>();
         modifier = GetComponent<WeaponModifier>();
         cameraEffects = FindAnyObjectByType<CameraEffects>();
 
         if (WeaponSetting.recoilData != null)
         {
             weaponSetting.recoilData = weaponSetting.recoilData.Clone();
+            if (visualRecoil != null)
+                visualRecoil.SetRecoilData(weaponSetting.recoilData);
         }
 
         UpdateMod();
@@ -109,15 +120,24 @@ public abstract class WeaponBase : MonoBehaviour
             weaponRT.finalAmmo = weaponSetting.maxAmmo + modifier.GetMaxAmmo();
             weaponRT.finalDamage = weaponSetting.damage * modifier.GetDamageMod();
             weaponRT.finalAttackRate = weaponSetting.attackRate / modifier.GetAttacklateMod();
-            // float finalMoveSpeed = weaponSetting.movespeed * modifier.GetMoveSpeedMod();
+            weaponRT.finalDistance = weaponSetting.attackDistance * modifier.GetMaxDistanceMod();
+            weaponRT.finalZoominSpeed = weaponSetting.zoominSpeed * modifier.GetZoomSpeedMod();
+            weaponRT.finalThrowforce = weaponSetting.Throwforce * modifier.GetThrowMod();
 
             // 반동 데이터
             weaponRT.vRecoil = modifier.GetVerticalRecoilMod();
             weaponRT.hRecoil = modifier.GetHorizontalRecoilMod();
+            weaponRT.VisualRecoil = weaponSetting.rotationIntensity * modifier.GetVisualRecoilMod();
 
             // 탄퍼짐 데이터
             weaponRT.maxSpread = modifier.GetMaxSpreadMod();
             // float increaseSpread = GetIncreaseSpreadMod();
+
+            if (visualRecoil != null)
+                visualRecoil.SetMaxAmmo(weaponRT.finalAmmo);
+
+            if (cameraRecoil != null)
+                cameraRecoil.SetMaxAmmo(weaponRT.finalAmmo);
         }
     }
 }

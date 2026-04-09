@@ -14,11 +14,12 @@ TagManager:
   - Item
   - ThrowWeapon
   - Coin
+  - SpawnPoint
   layers:
   - Default
   - TransparentFX
   - Ignore Raycast
-  - 
+  - PostProcess
   - Water
   - UI
   - Player
@@ -26,7 +27,7 @@ TagManager:
   - Item
   - ThorwWeapon
   - Weapon
-  - 
+  - GunSmithDisplay
   - 
   - 
   - 

@@ -1,0 +1,18 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6bdfb5c7837305c4e81c12caff3a2e93, type: 3}
+  m_Name: TestRoom3
+  m_EditorClassIdentifier: 
+  mapPrefab: {fileID: 1708501734431436671, guid: f8199037b62e39b49a0deb4426a7ee4e, type: 3}
+  playerSpawnPointName: PlayerSpawnPoint
+  mapDisplayName: TestRoom2
+  lightingProfile: {fileID: 11400000, guid: bc899cace51b00742a7eb1ab370d4e40, type: 2}

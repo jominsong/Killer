@@ -9,6 +9,8 @@ public class WeaponModifier : MonoBehaviour
     private Dictionary<AttachmentSlot, WeaponAttachment> equippedAttachments = new Dictionary<AttachmentSlot, WeaponAttachment>();
     // 현재 장착된 파츠 오브젝트들을 관리
     private Dictionary<AttachmentSlot, GameObject> spawnedParts = new Dictionary<AttachmentSlot, GameObject>();
+    // 임시 modifier용 weapon 없이 무기군만 지정
+    private WeaponType? forcedWeaponType = null;
 
     [Header("Attachment Points")]
     [SerializeField]
@@ -30,10 +32,19 @@ public class WeaponModifier : MonoBehaviour
         weapon = attachedWeapon;
     }
 
+    public void SetWeaponType(WeaponType type)
+    {
+        forcedWeaponType = type;
+    }
+
     public bool CanAttach(WeaponAttachment attachment)
     {
-        if (attachment == null || weapon == null) return false;
-        return attachment.allowedWeaponTypes.Contains(weapon.GetWeaponType());
+        if (attachment == null) return false;
+
+        // forcedWeaponType 우선 사용
+        WeaponType targetType = forcedWeaponType ?? (weapon != null ? weapon.GetWeaponType() : (WeaponType?)null) ?? WeaponType.AR;
+
+        return System.Array.Exists(attachment.allowedWeaponTypes, t => t == targetType);
     }
 
     // 파츠 장착 로직
@@ -108,6 +119,7 @@ public class WeaponModifier : MonoBehaviour
     // 최종 반동 배율 계산
     public float GetVerticalRecoilMod() { return CalculateMod(a => a.verticalrecoilMultiplier); }
     public float GetHorizontalRecoilMod() { return CalculateMod(a =>a.horizontalrecoilMultiplier); }
+    public float GetVisualRecoilMod() { return CalculateMod(a => a.visualrecoilMultiplier); }
 
     // 최종 탄퍼짐 배율 계산
     public float GetMaxSpreadMod() { return CalculateMod(a => a.maxspreadMultiplier); }
@@ -117,7 +129,10 @@ public class WeaponModifier : MonoBehaviour
     public float GetMoveSpeedMod() { return CalculateMod(a => a.moveSpeedMultiplier); }
     public float GetAttacklateMod() { return CalculateMod(a => a.flattackRateMultiplier); }
     public float GetDamageMod() { return CalculateMod(a => a.damageMultiplier); }
-    public int GetMaxAmmo() { return equippedAttachments.Values.Sum(a => a.MaxAmmoAdder); }
+    public float GetMaxDistanceMod() {return CalculateMod(a => a.distanceMultiplier); }
+    public float GetZoomSpeedMod() {return CalculateMod(a => a.zoomSpeedMultiplier);}
+    public float GetThrowMod() { return CalculateMod(a => a.throwForceMultiplier); }
+    public int GetMaxAmmo() { return equippedAttachments.Values.Sum(a => a.maxAmmoAdder); }
 
     private float CalculateMod(System.Func<WeaponAttachment, float> selector)
     {

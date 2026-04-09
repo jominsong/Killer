@@ -8,10 +8,10 @@ public class GunSmithWorkBench : InteractionBase
     public override void Use(GameObject entity)
     {
         WeaponSwitchSystem switchSystem = entity.GetComponentInChildren<WeaponSwitchSystem>();
-        if (switchSystem == null || switchSystem.CurrentWeapon == null) return;
+        if (switchSystem == null) return;
 
         // 매니저를 통해 건스미스 화면 오픈
-        GunSmithManager.Instance.OpenGunSmith(entity, switchSystem.CurrentWeapon);
+        GunSmithManager.Instance.OpenGunSmith(entity);
 
     }
 }

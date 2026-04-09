@@ -11,15 +11,14 @@ public class AttachmentPool : MonoBehaviour
 
     private void Awake() => instance = this;
 
-    // Æ¯Á¤ ½½·í¿¡ ¸Â´Â ·£´ý ÆÄÃ÷ 3°³¸¦ »Ì¾ÆÁÜ
-    public List<WeaponAttachment> GetRandomAttachments(AttachmentSlot slot,int count = 3)
+    // ¹«±â±º + ½½·Ô µ¿½Ã ÇÊÅÍ¸µ
+    public List<WeaponAttachment> GetRandomAttachments(WeaponType weaponType, int count = 3)
     {
-        List<WeaponAttachment> filteredList = allAttachments
-            .Where(a => a.slot == slot)
-            .ToList();
+        List<WeaponAttachment> filtered = allAttachments
+         .Where(a => System.Array.Exists(a.allowedWeaponTypes, t => t == weaponType))
+         .ToList();
 
-
-        return filteredList.OrderBy(x => Random.value).Take(count).ToList();
+        return filtered.OrderBy(x => Random.value).Take(count).ToList();
     }
 
 }

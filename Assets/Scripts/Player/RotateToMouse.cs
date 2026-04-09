@@ -9,10 +9,10 @@ public class RotateToMouse : MonoBehaviour
 
     private float limitMinX = -80;  // 카메라 x축 회전 범위(최소)
     private float limitMaxX = 50;   // 카메라 x축 회전 범위(최대)
+
     private float eulerAngleX;
     private float eulerAngleY;
-
-    private Vector3 recoilRotation;  // 반동에 의한 회전값
+ 
 
     public void UpdateRotate(float mouseX,float mouseY)
     {
@@ -20,22 +20,20 @@ public class RotateToMouse : MonoBehaviour
         eulerAngleX -= mouseY * rotCamXAxisSpeed;  // 마우스 상/하 이동으로 카메라 x축 회전
 
         // 카메라 x축 회전의 경우 회전 범위를 설정
-        eulerAngleX = ClampAngle(eulerAngleX,limitMinX,limitMaxX);
+        eulerAngleX = Mathf.Clamp(eulerAngleX, limitMinX, limitMaxX);
 
-        Quaternion targetRot = Quaternion.Euler(eulerAngleX + recoilRotation.x, eulerAngleY + recoilRotation.y, 0);
-        transform.localRotation = targetRot;
+        transform.localRotation = Quaternion.Euler(eulerAngleX, eulerAngleY, 0f);
     }
 
-    public void SetRecoilRotaion(Vector3 rotation)
+    public void AddRecoil(float x, float y)
     {
-        recoilRotation = rotation;
+        eulerAngleX += x;
+        eulerAngleX = Mathf.Clamp(eulerAngleX, limitMinX, limitMaxX);
+        eulerAngleY += y;
     }
+    
 
-    private float ClampAngle(float angle,float min , float max)
-    {
-        if (angle < -360) angle += 360;
-        if (angle > 360) angle -= 360;
-
-        return Mathf.Clamp(angle, min, max);
-    }
+    // 외부 참조용
+    public float EulerAngleX => eulerAngleX;
+    public float EulerAngleY => eulerAngleY;
 }

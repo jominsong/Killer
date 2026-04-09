@@ -1,316 +1,338 @@
 using System.Collections;
 using UnityEngine;
 using UnityEngine.AI;
-using UnityEngine.XR;
 
-public enum EnemyState { None = -1, Idle = 0, Wander, Pursuit,Attack,}
+public enum EnemyState { None = -1, Idle = 0, Wander, Pursuit, Attack }
 
 public class EnemyFSM : MonoBehaviour
 {
     [Header("Pursuit")]
-    [SerializeField]
-    private float targetRecognitionRange = 8;  // 인식 범위 (이 범위 안에 들어오면 "Pursuit" 상태로 변경)
-    [SerializeField]
-    private float pursuitLimitRange = 10;  // 추적 범위 (이 범위 바깥으로 나가면 "Wander" 상태로 변경)
+    [SerializeField] private float targetRecognitionRange = 8f;
+    [SerializeField] private float pursuitLimitRange = 10f;
 
     [Header("Attack")]
-    [SerializeField]
-    private GameObject projectilePrefab;  // 발사체 프리팹
-    [SerializeField]
-    private Transform projectileSpawnPoint;  // 발사체 생성 위치
-    [SerializeField]
-    private float attackRange = 5;  // 공격 범위 (이 범위 안에 들어오면 "Attack" 상태로 변경
-    [SerializeField]
-    private float attackRate = 1;  // 공격 속도
+    [SerializeField] private GameObject projectilePrefab;
+    [SerializeField] private Transform projectileSpawnPoint;
+    [SerializeField] private float attackRange = 5f;
+    [SerializeField] private float attackRate = 1f;
 
-    [Header("Drop Gun")]
-    [SerializeField]
-    private GameObject ItemDropPrefab;  // 드롭할 아이템
+    [Header("Drop")]
+    [SerializeField] private GameObject[] dropItemPrefabs;
     [Range(0f, 1f)]
-    [SerializeField]
-    private float dropProbability = 0.3f;  // 드롭 확률 1f = 100%
+    [SerializeField] private float dropProbability = 0.3f;
+    [SerializeField] private GameObject coinPrefab;
 
-    [Header("Drop Coin")]
-    [SerializeField]
-    private GameObject coinPrefab;
+    private GameObject assignedDropPrefab;
 
-    private EnemyState enemyState = EnemyState.None;  // 현재 적 행동
-    private float lastAttackTime = 0;  // 공격 주기 계산용 변수
+    // ── 상태 ──────────────────────────────────────────────────────────
+    private EnemyState enemyState = EnemyState.None;
+    private float lastAttackTime;
 
-    private Status status;  // 이동속도 등의 정보
-    private NavMeshAgent navMeshAgent;  // 이동 제어를 위한 NavMeshAgent
-    private Transform target; // 적의 공격 대상 (플레이어)
-    private EnemyMemoryPool enemyMemoryPool;  // 적 메모리 풀 (적 오브젝트 비활성화에 사용)
+    // ── 컴포넌트 참조 ─────────────────────────────────────────────────
+    private Status status;
+    private NavMeshAgent navMeshAgent;
+    private Transform target;
+    private IEnemyPool enemyPool;
 
-    //private void Awake()
-    public void Setup(Transform target, EnemyMemoryPool enemyMemoryPool)
+    // ── 코루틴 참조 ───────────────────────────────────────────────────
+    private Coroutine stateCoroutine;
+    private Coroutine autoWanderCoroutine;
+
+    // Setup() 완료 여부  OnEnable이 Setup보다 먼저 실행되는 타이밍 문제 차단
+    private bool isSetupDone = false;
+
+    // =================================================================
+    //  초기화
+    // =================================================================
+    public void Setup(Transform target, IEnemyPool pool)
     {
         status = GetComponent<Status>();
         navMeshAgent = GetComponent<NavMeshAgent>();
+
         this.target = target;
-        this.enemyMemoryPool = enemyMemoryPool;
+        this.enemyPool = pool;
 
-        // NavMeshAgent 컴포넌트에서 회전을 업데이트 하지 않도록 설정
-        navMeshAgent.updateRotation = false;
+        if (navMeshAgent != null)
+            navMeshAgent.updateRotation = false;
 
+        // 스폰 시점에 드롭 아이템 랜덤 배정
+        AssignRandomDrop();
+
+        isSetupDone = true;
+    }
+
+    private void AssignRandomDrop()
+    {
+        if (dropItemPrefabs == null || dropItemPrefabs.Length == 0)
+        {
+            assignedDropPrefab = null;
+            return;
+        }
+
+        // 확률 체크 먼저 드롭 안 하는 적은 null 배정
+        if (Random.value > dropProbability)
+        {
+            assignedDropPrefab = null;
+            return;
+        }
+
+        // 랜덤으로 하나 배정
+        assignedDropPrefab = dropItemPrefabs[Random.Range(0, dropItemPrefabs.Length)];
     }
 
     private void OnEnable()
     {
-        // 적이 활성화 될 때 적의 상태를 "대기"로 설정
-        ChangeState(EnemyState.Idle);
+        // SetActive(true) 이후 이 시점은 항상 활성 상태 → 코루틴 정상 시작
+        if (isSetupDone)
+            ChangeState(EnemyState.Idle);
     }
 
     private void OnDisable()
     {
-        // 적이 비활성화 될 때 현재 재생중인 상태를 종료하고, 상태를 "None"으로 설정
-        StopCoroutine(enemyState.ToString());
-
+        StopAllCoroutines();
+        stateCoroutine = null;
+        autoWanderCoroutine = null;
         enemyState = EnemyState.None;
+
+        // 풀 반환 시 경로 초기화 (재활성화 때 이전 경로 잔류 방지)
+        if (navMeshAgent != null && navMeshAgent.isOnNavMesh)
+            navMeshAgent.ResetPath();
+
+        // 재활성화 시 새로 배정되도록 초기화
+        assignedDropPrefab = null;
     }
 
-    public void ChangeState(EnemyState newstate)
+    // =================================================================
+    //  상태 전이
+    // =================================================================
+    public void ChangeState(EnemyState newState)
     {
-        // 현재 재생중인 상태와 바꾸려고 하는 상태가 같으면 바꿀 필요가 없기 때문에 retrun
-        if (enemyState == newstate) return;
+        if (enemyState == newState) return;
 
-        // 이전에 재생중이던 상태 종료
-        StopCoroutine(enemyState.ToString());
-        // 현재 적의 상태를 newState로 설정
-        enemyState = newstate;
-        // 새로운 상태 재생
-        StartCoroutine(enemyState.ToString());
+        if (stateCoroutine != null)
+        {
+            StopCoroutine(stateCoroutine);
+            stateCoroutine = null;
+        }
+
+        enemyState = newState;
+
+        stateCoroutine = newState switch
+        {
+            EnemyState.Idle => StartCoroutine(Idle()),
+            EnemyState.Wander => StartCoroutine(Wander()),
+            EnemyState.Pursuit => StartCoroutine(Pursuit()),
+            EnemyState.Attack => StartCoroutine(Attack()),
+            _ => null
+        };
     }
 
+    // =================================================================
+    //  데미지 / 사망
+    // =================================================================
     public void TakeDamage(float damage)
     {
-        bool isDie = status.DecreaseHP(damage);
+        if (status == null) return;
 
-        if (isDie == true)
-        {
-            TryDropItem();
-            DropCoins();
-            enemyMemoryPool.DeactivateEnemy(gameObject);
-        }
+        bool isDead = status.DecreaseHP(damage);
+        if (!isDead) return;
+
+        TryDropItem();
+        TryDropCoin();
+        enemyPool?.DeactivateEnemy(gameObject);
     }
 
     private void TryDropItem()
     {
-        if (ItemDropPrefab == null) return;
+        // 스폰 시 배정된 아이템이 없으면 드롭 안 함
+        if (assignedDropPrefab == null) return;
 
-        // 랜덤 확률 계산
-        float randomValue = Random.value;
-        if (randomValue <= dropProbability)
+        GameObject dropped = Instantiate(
+            assignedDropPrefab,
+            transform.position + Vector3.up * 0.5f,
+            Quaternion.identity);
+
+
+        // 드롭 아이템의 weaponType 기준으로 해당 무기군 파츠만 주입
+        ItemWeapon weaponItem = dropped.GetComponent<ItemWeapon>();
+        if (weaponItem != null && GunSmithManager.Instance != null)
         {
-            // 현재 위치에 아이템 생성
-            Instantiate(ItemDropPrefab,transform.position + Vector3.up *0.5f, Quaternion.identity);
+            weaponItem.SetInGameAttachments(
+                GunSmithManager.Instance.GetCurrentAttachments(weaponItem.weaponType));
         }
     }
 
-    private void DropCoins()
+    private void TryDropCoin()
     {
+        if (coinPrefab == null || target == null) return;
         GameObject coin = Instantiate(coinPrefab, transform.position + Vector3.up, Quaternion.identity);
-        coin.GetComponent<ItemCoin>().SetTarget(target);
+        coin.GetComponent<ItemCoin>()?.SetTarget(target);
     }
 
+    // =================================================================
+    //  상태 코루틴
+    // =================================================================
     private IEnumerator Idle()
     {
-        // n초 후에 "배회" 상태로 변경하는 코루틴 실행
-        StartCoroutine("AutoChangeFromidleToWander");
+        yield return null;
+        autoWanderCoroutine = StartCoroutine(AutoChangeFromIdleToWander());
 
         while (true)
         {
-            // "대기" 상태일 때 하는 행동
-            // 타겟과의 거리에 따라 행동 선택 (배회,추격,원거리 공격)
             CalculateDistanceToTargetAndSelectState();
-
             yield return null;
         }
     }
 
-    private IEnumerator AutoChangeFromidleToWander()
+    private IEnumerator AutoChangeFromIdleToWander()
     {
-        // 1~4초 시간 대기
-        int changeTime = Random.Range(1, 5);
-
-        yield return new WaitForSeconds(changeTime);
-
-        // 상태를 "배회"로 변경
+        yield return new WaitForSeconds(Random.Range(1f, 4f));
         ChangeState(EnemyState.Wander);
     }
 
     private IEnumerator Wander()
     {
-        float currentTime = 0;
-        float maxTime = 10;
+        yield return null;
+        if (navMeshAgent == null || status == null) yield break;
 
-        // 이동 속도 설정
+        float elapsed = 0f;
+        const float maxTime = 10f;
+
         navMeshAgent.speed = status.WalkSpeed;
-
-        // 목표 위치 설정
         navMeshAgent.SetDestination(CalculateWanderPosition());
 
-        // 목표 위치로 회전
-        Vector3 to = new Vector3(navMeshAgent.destination.x , 0 ,navMeshAgent.destination.z);
-        Vector3 from = new Vector3(transform.position.x , 0 ,transform.position.z);
-        transform.rotation = Quaternion.LookRotation(to - from);
+        Vector3 dir = navMeshAgent.destination - transform.position;
+        dir.y = 0f;
+        if (dir.sqrMagnitude > 0.001f)
+            transform.rotation = Quaternion.LookRotation(dir);
 
         while (true)
         {
-            currentTime += Time.deltaTime;
+            elapsed += Time.deltaTime;
 
-            // 목표위치에 근접하게 도달하거나 너무 오랜시간동안 배회하기 상태에 머물러 있으면
-            to = new Vector3(navMeshAgent.destination.x, 0, navMeshAgent.destination.z);
-            from = new Vector3(transform.position.x, 0, transform.position.z);
-            if ( (to-from).sqrMagnitude < 0.01f || currentTime >= maxTime)
+            Vector3 toDestination = navMeshAgent.destination - transform.position;
+            toDestination.y = 0f;
+
+            if (toDestination.sqrMagnitude < 0.01f || elapsed >= maxTime)
             {
-                // 상태를 "대기"로 변경
                 ChangeState(EnemyState.Idle);
+                yield break;
             }
 
-            // 타겟과의 거리에 따라 행동 선택 (배회,추격,원거리 공격)
             CalculateDistanceToTargetAndSelectState();
-
             yield return null;
         }
-
-    }
-
-    private Vector3 CalculateWanderPosition()
-    {
-        float wanderRadius = 10;  // 현재 위치를 원점으로 하는 원의 반지름
-        int wanderJitter = 0;  // 선택된 각도 (wanderJitterMin ~ wanderJitterMax)
-        int wanderJitterMin = 0;  // 최소 각도
-        int wanderJitterMax = 360;  // 최대 각도
-
-        // 현재 적 캐릭터가 있는 월드의 중심 위치와 크기 (구역을 벗어난 행동을 하지 않도록)
-        Vector3 rangePosition = Vector3.zero;
-        Vector3 rangeScale = Vector3.one * 100.0f;
-
-        // 자신의 위치를 중심으로 반지름(wanderRadius) 거리, 선택된 각도(wanderJitter)에 위치한 좌표를 목표지점으로 설정
-        wanderJitter = Random.Range(wanderJitterMin, wanderJitterMax);
-        Vector3 targetPosition = transform.position + SetAngle(wanderRadius, wanderJitter);
-
-        // 생성된 목표위치가 자신의 이동구역을 벗어나지 않게 조절
-        targetPosition.x = Mathf.Clamp(targetPosition.x, rangePosition.x - rangeScale.x * 0.5f, rangePosition.x + rangeScale.x * 0.5f);
-        targetPosition.y = 0.0f;
-        targetPosition.z = Mathf.Clamp(targetPosition.z, rangePosition.z - rangeScale.z * 0.5f, rangePosition.z + rangeScale.z * 0.5f);
-
-        return targetPosition;
-    }
-
-    private Vector3 SetAngle(float radius, float angle)
-    {
-        Vector3 position = Vector3.zero;
-
-        position.x = Mathf.Cos(angle) * radius;
-        position.z = Mathf.Sin(angle) * radius;
-
-        return position;
     }
 
     private IEnumerator Pursuit()
     {
+        if (navMeshAgent == null || status == null) yield break;
+
+        navMeshAgent.speed = status.RunSpeed;
+
         while (true)
         {
-            while (true)
+            if (target != null)
             {
-                // 이동 속도 설정 (배회할 때는 걷는 속도로 이동. 추적할 때는 뛰는 속도로 이동)
-                navMeshAgent.speed = status.RunSpeed;
-
-                // 목표위치를 현재 플레이어의 위치로 설정
                 navMeshAgent.SetDestination(target.position);
-
-                // 타겟 방향을 계속 주시하도록 함
                 LookRotationToTarget();
-
-                // 타겟과의 거리에 따라 행동 선택 (배회, 추격, 원거리 공격)
-                CalculateDistanceToTargetAndSelectState();
-
-                yield return null;
             }
+
+            CalculateDistanceToTargetAndSelectState();
+            yield return null;
         }
     }
 
     private IEnumerator Attack()
     {
-        // 공격 할때는 이동을 멈추도록 설정
-        navMeshAgent.ResetPath();
+        if (navMeshAgent == null) yield break;
+
+        if (navMeshAgent.isOnNavMesh)
+            navMeshAgent.ResetPath();
 
         while (true)
         {
-            // 타겟 방향 주시
             LookRotationToTarget();
-
-            // 타겟과의 거리에 따라 행동 선택 (배회, 추격,원거리 공격)
             CalculateDistanceToTargetAndSelectState();
 
             if (Time.time - lastAttackTime > attackRate)
             {
-                // 공격주기가 되어야 공격 할 수 있도록 하기 위해 현재 시간 저장
                 lastAttackTime = Time.time;
 
-                // 발사체 생성
-                GameObject clone = Instantiate(projectilePrefab, projectileSpawnPoint.position, projectileSpawnPoint.rotation);
-                clone.GetComponent<EnemyProjectile>().Setup(target.position);
+                if (projectilePrefab != null && projectileSpawnPoint != null && target != null)
+                {
+                    GameObject clone = Instantiate(projectilePrefab,
+                        projectileSpawnPoint.position,
+                        projectileSpawnPoint.rotation);
+                    clone.GetComponent<EnemyProjectile>()?.Setup(target.position);
+                }
             }
 
             yield return null;
         }
     }
 
+    // =================================================================
+    //  유틸
+    // =================================================================
     private void LookRotationToTarget()
     {
-        // 목표 위치
-        Vector3 to = new Vector3(target.position.x , 0 , target.position.z);
-        // 내 위치
-        Vector3 from = new Vector3(transform.position.x, 0, transform.position.z);
+        if (target == null) return;
 
-        // 바로 돌기
-        transform.rotation = Quaternion.LookRotation(to - from);
-        // 서서히 돌기
-        //Quaternion rotation = Quaternion.LookRotation(to-from);
-        //transform.rotation = Quaternion.Slerp(transform.rotation, rotation,0.01f);
+        Vector3 dir = target.position - transform.position;
+        dir.y = 0f;
+        if (dir.sqrMagnitude > 0.001f)
+            transform.rotation = Quaternion.LookRotation(dir);
     }
 
     private void CalculateDistanceToTargetAndSelectState()
     {
         if (target == null) return;
-        
-        // 플레이어(Target)와 적의 거리 계산 후 거리에 따라 행동 선택
+
         float distance = Vector3.Distance(target.position, transform.position);
 
-        if (distance < attackRange)
-        {
+        if (distance <= attackRange)
             ChangeState(EnemyState.Attack);
-        }
-        else if ( distance <= targetRecognitionRange)
-        {
+        else if (distance <= targetRecognitionRange)
             ChangeState(EnemyState.Pursuit);
-        }
-        else if (distance >= targetRecognitionRange)
-        {
+        else if (distance > pursuitLimitRange)
             ChangeState(EnemyState.Wander);
-        }
+        // targetRecognitionRange < distance <= pursuitLimitRange : 현재 상태 유지
     }
 
+    private Vector3 CalculateWanderPosition()
+    {
+        const float wanderRadius = 10f;
+        Vector3 rangeCenter = Vector3.zero;
+        Vector3 rangeScale = Vector3.one * 100f;
+
+        float angle = Random.Range(0f, 360f) * Mathf.Deg2Rad;
+        Vector3 pos = transform.position + new Vector3(
+            Mathf.Cos(angle) * wanderRadius, 0f, Mathf.Sin(angle) * wanderRadius);
+
+        pos.x = Mathf.Clamp(pos.x, rangeCenter.x - rangeScale.x * 0.5f, rangeCenter.x + rangeScale.x * 0.5f);
+        pos.y = 0f;
+        pos.z = Mathf.Clamp(pos.z, rangeCenter.z - rangeScale.z * 0.5f, rangeCenter.z + rangeScale.z * 0.5f);
+
+        return pos;
+    }
+
+    // =================================================================
+    //  에디터 Gizmo
+    // =================================================================
     private void OnDrawGizmos()
     {
-        // "배회" 상태일 때 이동할 경로 표시
-        Gizmos.color = Color.black;
-        Gizmos.DrawRay(transform.position, navMeshAgent.destination-transform.position);
+        if (navMeshAgent != null && navMeshAgent.isActiveAndEnabled)
+        {
+            Gizmos.color = Color.black;
+            Gizmos.DrawRay(transform.position, navMeshAgent.destination - transform.position);
+        }
 
-        // 목표 인식 범위
         Gizmos.color = Color.red;
         Gizmos.DrawWireSphere(transform.position, targetRecognitionRange);
-
-        // 추적 범위
         Gizmos.color = Color.green;
         Gizmos.DrawWireSphere(transform.position, pursuitLimitRange);
-
-        // 공격 범위
         Gizmos.color = new Color(0.39f, 0.04f, 0.04f);
         Gizmos.DrawWireSphere(transform.position, attackRange);
     }
-
 }

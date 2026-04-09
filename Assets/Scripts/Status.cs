@@ -30,6 +30,11 @@ public class Status : MonoBehaviour
         currentHP = maxHP;
     }
 
+    private void OnEnable()
+    {
+        currentHP = maxHP;
+    }
+
     public bool DecreaseHP(float damage)
     {
         float previousHP = currentHP;

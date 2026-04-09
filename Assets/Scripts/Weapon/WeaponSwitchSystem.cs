@@ -7,12 +7,12 @@ public class WeaponSwitchSystem : MonoBehaviour
     [SerializeField]
     private PlayerHUD playerHUD;
     [SerializeField]
-    private Transform mountMain;
+    private Transform mountPrimary;
     [SerializeField]
-    private Transform mountSub;
+    private Transform mountSecondary;
 
     [SerializeField]
-    private WeaponBase[] weapons;  // 소지중인 무기 4종류
+    private WeaponBase[] weapons = new WeaponBase[2];
 
     private WeaponBase currentWeapon;  // 현재 사용중인 무기
     private WeaponBase previousWeapon;  // 직전에 사용했던 무기
@@ -25,17 +25,8 @@ public class WeaponSwitchSystem : MonoBehaviour
         // 무기 정보 출력을 위해 현재 소지중인 모든 무기 이벤트 등록
         playerHUD.SetupAllWeapons(weapons);
 
-        // 현재 소지중인 모든 무기를 보이지 않게 설정
-        for (int i = 0; i < weapons.Length; ++ i)
-        {
-            if ( weapons[i].gameObject != null)
-            {
-                weapons[i].gameObject.SetActive(false);
-            }
-        }
-
         // Main 무기를 현재 사용 무기로 설정
-        SwitchingWeapon(WeaponType.main);
+        SwitchingWeapon(WeaponSlot.Primary);
     }
 
     private void Update()
@@ -47,63 +38,40 @@ public class WeaponSwitchSystem : MonoBehaviour
     {
         if( !Input.anyKeyDown) return;
 
-        // 1~4 숫자키를 누르면 무기 교체
-        int inputIndex = 0;
-        if ( int.TryParse(Input.inputString, out inputIndex ) && ( inputIndex > 0 && inputIndex < 5))
-        {
-            SwitchingWeapon((WeaponType)inputIndex-1);
-        }
+        // 1 = Primary, 2 = Secondary
+        if (Input.GetKeyDown(KeyCode.Alpha1)) SwitchingWeapon(WeaponSlot.Primary);
+        if (Input.GetKeyDown(KeyCode.Alpha2)) SwitchingWeapon(WeaponSlot.Secondary);
     }
 
-    private void SwitchingWeapon(WeaponType weaponType)
+    private void SwitchingWeapon(WeaponSlot slot)
     {
 
-        // 교체 가능한 무기가 없으면 종료
-        if (weapons[(int)weaponType] == null)
-        {
-            return;
-        }
+        WeaponBase target = weapons[(int)slot];
+        if (target == null) return;
+        // 현재 사용중인 무기로 교체하려고 할 떄 종료
+        if (target == currentWeapon) return;
 
-        // 현재 사용중인 무기가 있으면 이전 무기 정보에 저장
-        if ( currentWeapon != null)
+        // 이전에 사용하던 무기 비활성화
+        if (currentWeapon != null)
         {
             previousWeapon = currentWeapon;
+            previousWeapon.gameObject.SetActive(false);
         }
 
         // 무기 교체
-        currentWeapon = weapons[(int)weaponType];
+        currentWeapon = target;
+        // 현재 사용하는 무기 활성화
+        currentWeapon.gameObject.SetActive(true);
 
-        // 현재 사용중인 무기로 교체하려고 할 떄 종료
-        if ( currentWeapon == previousWeapon)
-        {
-            return;
-        }
 
         // 무기를 사용하는 PlayerController, PlayerHUD에 현재 무기 정보 전달
         playerController.SwitchingWeapon(currentWeapon);
         playerHUD.SwitchingWeapon(currentWeapon);
-
-        // 이전에 사용하던 무기 비활성화
-        if (previousWeapon != null)
-        {
-            previousWeapon.gameObject.SetActive(false);
-        }
-        // 현재 사용하는 무기 활성화
-        currentWeapon.gameObject.SetActive(true);
-
     }
 
-    private Transform GetMountPoint(WeaponType type)
+    private Transform GetMountPoint(WeaponSlot slot)
     {
-        switch(type)
-        {
-            case WeaponType.main:
-                return mountMain;
-            case WeaponType.sub: 
-                return mountSub;
-        }
-
-        return null;
+        return slot == WeaponSlot.Primary ? mountPrimary : mountSecondary;
     }
 
     public void ClearCurrentWeapon(WeaponBase weapon)
@@ -145,7 +113,7 @@ public class WeaponSwitchSystem : MonoBehaviour
             {
                 if ( weapons[i] == null )
                 {
-                    SwitchingWeapon((WeaponType)i);
+                    SwitchingWeapon((WeaponSlot)i);
                     return;
                 }
             }
@@ -156,19 +124,19 @@ public class WeaponSwitchSystem : MonoBehaviour
         playerHUD.SwitchingWeapon(null);
     }
 
-    public void AddWeapon(WeaponBase newweapon,WeaponType slot)
+    public void AddWeapon(WeaponBase newWeapon, WeaponSlot slot)
     {
         if (weapons[(int)slot] != null) return;
 
-        weapons[(int)slot] = newweapon;
+        weapons[(int)slot] = newWeapon;
 
         Transform mount = GetMountPoint(slot);
 
         // 플레이어 무기 하위로 정렬, 활성화 처리
-        newweapon.transform.SetParent(mount);
-        newweapon.transform.localPosition = Vector3.zero;
-        newweapon.transform.localRotation = Quaternion.identity;
-        newweapon.OnEquipped();
+        newWeapon.transform.SetParent(mount);
+        newWeapon.transform.localPosition = Vector3.zero;
+        newWeapon.transform.localRotation = Quaternion.identity;
+        newWeapon.OnEquipped();
 
         // HUD에 등록 갱신
         playerHUD.SetupAllWeapons(weapons);
@@ -178,13 +146,7 @@ public class WeaponSwitchSystem : MonoBehaviour
         SwitchingWeapon(slot);
     }
 
-    public bool HasWeapon(WeaponType type)
-    {
-        return weapons[(int)type] != null;
-    }
+    public bool HasWeapon(WeaponSlot slot) => weapons[(int)slot] != null;
 
-    public WeaponBase GetWeapon(WeaponType type)
-    {
-        return weapons[(int)type];
-    }
+    public WeaponBase GetWeapon(WeaponSlot slot) => weapons[(int)slot];
 }

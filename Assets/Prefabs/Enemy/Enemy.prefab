@@ -252,10 +252,11 @@ MonoBehaviour:
   projectileSpawnPoint: {fileID: 160380177502246254}
   attackRange: 5
   attackRate: 1
-  ItemDropPrefab: {fileID: 1352715449531312008, guid: 831928cc667c5e44885970ca599f054f, type: 3}
-  dropProbability: 0.5
+  dropItemPrefabs:
+  - {fileID: 1352715449531312008, guid: 831928cc667c5e44885970ca599f054f, type: 3}
+  - {fileID: 1352715449531312008, guid: 0b21255c668880d4795db8a24856ac13, type: 3}
+  dropProbability: 0.3
   coinPrefab: {fileID: 3328778681324177818, guid: b05e597ddccbc7941b0bc87b84a02a61, type: 3}
-  Coins: 1
 --- !u!114 &-6092340368037387503
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -319,7 +320,7 @@ Rigidbody:
   m_ImplicitCom: 1
   m_ImplicitTensor: 1
   m_UseGravity: 0
-  m_IsKinematic: 0
+  m_IsKinematic: 1
   m_Interpolate: 0
   m_Constraints: 126
   m_CollisionDetection: 0

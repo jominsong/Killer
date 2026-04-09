@@ -1,14 +1,28 @@
 using UnityEngine;
+using static Unity.Cinemachine.CinemachineFreeLookModifier;
 
 public class CameraRecoil : MonoBehaviour
 {
-    private Vector3 currentRotation;
-    private Vector3 targetRotation;
-
     private RecoilData recoilData;  // 현재 무기의 데이터
-    private float fireDuration = 0f;
-
     private RotateToMouse rotateToMouse;  // 회전을 담당하는 컴포넌트
+
+    private int shotCount = 0;
+    private int maxAmmo;
+
+    // 목표 반동값
+    private float targetRecoilX;
+    private float targetRecoilY;
+
+    //  부드럽게 따라가는 반동값
+    private float currentRecoilX;
+    private float currentRecoilY;
+
+    // 이전 프레임 currentRecoil (복귀량 계산용)
+    private float prevRecoilX;
+    private float prevRecoilY;
+
+    private float timeSinceLastFire = 999f;
+    private const float SHOT_RESET_DELAY = 0.5f;
 
     private void Awake()
     {
@@ -18,37 +32,62 @@ public class CameraRecoil : MonoBehaviour
     public void SetRecoilData(RecoilData newData)
     {
         recoilData = newData;
+        ResetRecoil();
+    }
+
+    public void SetMaxAmmo(int ammo)
+    {
+        maxAmmo = Mathf.Max(1, ammo);
     }
 
     private void Update()
     {
-        if (recoilData == null) return;
+        if (recoilData == null || rotateToMouse == null) return;
 
-        // 돌아오는 회전 계산
-        targetRotation = Vector3.Lerp(targetRotation, Vector3.zero, recoilData.returnSpeed * Time.deltaTime);
-        currentRotation = Vector3.Slerp(currentRotation, targetRotation, recoilData.snappiness * Time.deltaTime);
+        timeSinceLastFire += Time.deltaTime;
 
-        // 최종적으로 카메라 Transform에 적용 (기존 마우스 로직에 더해짐)
-        if (rotateToMouse != null)
+        prevRecoilX = currentRecoilX;
+        prevRecoilY = currentRecoilY;
+
+        // current는 target을 부드럽게 추적
+        currentRecoilX = Mathf.Lerp(currentRecoilX, targetRecoilX, recoilData.snappiness * Time.deltaTime);
+        currentRecoilY = Mathf.Lerp(currentRecoilY, targetRecoilY, recoilData.snappiness * Time.deltaTime);
+
+        float deltaX = currentRecoilX - prevRecoilX;
+        float deltaY = currentRecoilY - prevRecoilY;
+
+        rotateToMouse.AddRecoil(deltaX, deltaY);
+
+        // 발사 중단 후 shotCount 리셋
+        if (timeSinceLastFire > SHOT_RESET_DELAY)
         {
-            rotateToMouse.SetRecoilRotaion(currentRotation);
+            currentRecoilX = 0f; currentRecoilY = 0f;
+            targetRecoilX = 0f; targetRecoilY = 0f;
+            shotCount = 0;
         }
-
-        if (targetRotation.magnitude < 0.1f) fireDuration = 0f;
     }
 
-    public void FireRecoil(float Ymodifier = 1.0f, float Xmodifier = 1.0f)
+    public void FireRecoil(float vModifier = 1.0f, float hModifier = 1.0f)
     {
-        if (recoilData == null) return;
-        fireDuration += Time.deltaTime;
+        if (recoilData == null || rotateToMouse == null) return;
 
-        // 사격 지속 시간에 따라 그래프의 값을 가져옴
-        float patternMultiplier = recoilData.recoilPatternX.Evaluate(fireDuration);
+        timeSinceLastFire = 0f;
+        
+        float recoilUp = -recoilData.recoilY * vModifier;
+        float recoilSide = Random.Range(-recoilData.recoilX, recoilData.recoilX) * hModifier;
 
-        // 수직은 위로(음수), 좌우는 랜덤하게 튀도록 설정
-        float recoilX = Random.Range(-recoilData.recoilX, recoilData.recoilX) * Xmodifier + patternMultiplier;
-        float recoilY = recoilData.recoilY * Ymodifier;
+        targetRecoilX += recoilUp;
+        targetRecoilY += recoilSide;
 
-        targetRotation += new Vector3(-recoilY , recoilX , 0);
+        shotCount++;
+    }
+
+    public void ResetRecoil()
+    {
+        targetRecoilX = 0f; targetRecoilY = 0f;
+        currentRecoilX = 0f; currentRecoilY = 0f;
+        prevRecoilX = 0f; prevRecoilY = 0f;
+        shotCount = 0;
+        timeSinceLastFire = 999f;
     }
 }
